@@ -1,6 +1,8 @@
 .venv/
 .venv-*/
 .tools/
+/docs/
+/doc/
 __pycache__/
 *.py[cod]
 *.egg-info/

@@ -101,8 +101,7 @@ src/vmsim/web/           FastAPI adapter and generated frontend assets
 frontend/src/           JavaScript/JSX React UI, API client, and frontend tests
 tests/                  Python tests
 tools/                  Cross-platform staging and release verification
-docs/                   Interface preview and local planning notes
 ```
 
-Markdown planning notes and repository instructions are kept locally and ignored by Git. `README.md` is the only Markdown file included in version control.
+Planning notes, screenshots, and repository instructions are kept locally and ignored by Git. The `docs/` and `doc/` folders are excluded from version control and release packages. `README.md` is the only Markdown file included in version control.
 

@@ -8,7 +8,8 @@ include frontend/index.html
 include frontend/vite.config.js
 recursive-include frontend/src *.js *.jsx *.css
 recursive-include tools *.py
-recursive-include docs *.png
+prune docs
+prune doc
 recursive-include src/vmsim/web/static *
 global-exclude *.md *.markdown
 include README.md
