@@ -1,0 +1,8 @@
+-r requirements.in
+pytest
+httpx2
+build
+setuptools
+wheel
+pip-tools
+

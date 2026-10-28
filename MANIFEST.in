@@ -1,0 +1,16 @@
+include PROJECT_PLAN.md
+include requirements*.txt
+include requirements*.in
+include frontend/package.json
+include frontend/package-lock.json
+include frontend/.npmrc
+include frontend/.nvmrc
+include frontend/index.html
+include frontend/tsconfig.json
+include frontend/vite.config.ts
+recursive-include frontend/src *.ts *.tsx *.css
+recursive-include tools *.py
+recursive-include docs *.md *.png
+recursive-include src/vmsim/web/static *
+global-exclude __pycache__ *.py[cod]
+
