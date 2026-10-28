@@ -1,7 +1,7 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { StrictMode } from 'react';
-import App from './App';
+import App from './App.jsx';
 
 const health = { status: 'ok', application: 'vmsim', version: '0.1.0', phase: 0, frontend_ready: true };
 afterEach(() => vi.unstubAllGlobals());
@@ -21,7 +21,7 @@ describe('foundation connection', () => {
     vi.stubGlobal('fetch', fetcher);
     render(<App />);
     expect(await screen.findByText('Offline')).toBeInTheDocument();
-    screen.getByRole('button', { name: /check connection/i }).click();
+    fireEvent.click(screen.getByRole('button', { name: /check connection/i }));
     expect(await screen.findByText('Connected')).toBeInTheDocument();
   });
 

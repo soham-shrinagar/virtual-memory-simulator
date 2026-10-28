@@ -13,6 +13,10 @@ frontend/node_modules/
 frontend/dist/
 frontend/coverage/
 src/vmsim/web/static/
-*.tsbuildinfo
 .DS_Store
+
+# Keep Markdown notes local; publish only README.md.
+*.[mM][dD]
+*.[mM][aA][rR][kK][dD][oO][wW][nN]
+!README.md
 

@@ -1,13 +1,8 @@
 import { useEffect, useState } from 'react';
-import { getHealth, type HealthResponse } from './api/client';
-
-type Connection =
-  | { status: 'checking' }
-  | { status: 'connected'; health: HealthResponse }
-  | { status: 'error' };
+import { getHealth } from './api/client.js';
 
 export default function App() {
-  const [connection, setConnection] = useState<Connection>({ status: 'checking' });
+  const [connection, setConnection] = useState({ status: 'checking' });
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {

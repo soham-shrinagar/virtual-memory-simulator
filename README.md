@@ -1,8 +1,8 @@
 # VM Lab — Virtual Memory Simulator
 
-A Linux-first university OS project with a **Python simulation engine/backend** and a **React + TypeScript interface**. It is an educational model, not a replacement for the host operating system's memory manager.
+A Linux-first university OS project with a **Python simulation engine/backend** and a **React + JavaScript interface**. React components use JSX. It is an educational model, not a replacement for the host operating system's memory manager.
 
-**Current milestone: Phase 0.** The package, health API, React application shell, development proxy, tests, frontend build, and Python release packaging are available. Memory configuration, translation, replacement algorithms, and playback are scheduled for subsequent phases. See [the specification and phase gates](PROJECT_PLAN.md).
+**Current milestone: Phase 0.** The package, health API, React application shell, development proxy, tests, frontend build, and Python release packaging are available. Memory configuration, translation, replacement algorithms, and playback are scheduled for subsequent phases.
 
 ## Requirements
 
@@ -68,7 +68,7 @@ npm --prefix frontend run test -- --run
 npm --prefix frontend run build
 ```
 
-The build includes TypeScript checking. Backend tests cover health responses, missing/frontend assets, API 404 behavior, independence from the working directory, and occupied-port errors. React tests cover backend connection, retry after failure, Strict Mode, and malformed API responses.
+Vite builds the JavaScript/JSX frontend. Backend tests cover health responses, missing/frontend assets, API 404 behavior, independence from the working directory, and occupied-port errors. React tests cover backend connection, retry after failure, Strict Mode, and malformed API responses. API responses are validated at runtime before the UI uses them.
 
 ## Build and verify an installable release
 
@@ -98,12 +98,11 @@ Keep direct Python dependencies in `requirements.in` and `pyproject.toml` synchr
 ```text
 src/vmsim/core/          Pure Python simulation logic (begins in Phase 1)
 src/vmsim/web/           FastAPI adapter and generated frontend assets
-frontend/src/           React UI, typed API client, and frontend tests
+frontend/src/           JavaScript/JSX React UI, API client, and frontend tests
 tests/                  Python tests
 tools/                  Cross-platform staging and release verification
-docs/                   Architecture decisions and milestone verification
-PROJECT_PLAN.md         Reviewed specification and implementation phases
+docs/                   Interface preview and local planning notes
 ```
 
-See [architecture decisions](docs/DECISIONS.md) and [Phase 0 verification](docs/PHASE_0.md) for scope and recorded results.
+Markdown planning notes and repository instructions are kept locally and ignored by Git. `README.md` is the only Markdown file included in version control.
 
