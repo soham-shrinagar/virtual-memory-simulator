@@ -1,9 +1,77 @@
-import { useEffect, useState } from 'react';
-import { getHealth } from './api/client.js';
+import { useEffect, useReducer, useRef, useState } from 'react';
+import { getHealth, simulateExperiment } from './api/client.js';
+import ConfigurationForm from './components/ConfigurationForm.jsx';
+import SimulationView from './components/SimulationView.jsx';
+import usePlayback from './hooks/usePlayback.js';
+import { buildRequest, initialState, simulationReducer } from './state/simulation.js';
 
 export default function App() {
   const [connection, setConnection] = useState({ status: 'checking' });
   const [attempt, setAttempt] = useState(0);
+  const [simulation, dispatch] = useReducer(simulationReducer, initialState);
+  const playback = usePlayback(simulation.trace);
+  const generation = useRef(0);
+  const activeRequest = useRef(null);
+
+  const invalidateRequest = () => {
+    generation.current += 1;
+    if (activeRequest.current) {
+      window.clearTimeout(activeRequest.current.timer);
+      activeRequest.current.controller.abort();
+      activeRequest.current = null;
+    }
+  };
+
+  useEffect(() => () => invalidateRequest(), []);
+
+  const edit = (field, value) => {
+    invalidateRequest();
+    playback.reset();
+    dispatch({ type: 'EDIT', field, value });
+  };
+
+  const loadExample = () => {
+    invalidateRequest();
+    playback.reset();
+    dispatch({ type: 'EXAMPLE' });
+  };
+
+  const cancel = () => {
+    invalidateRequest();
+    playback.reset();
+    dispatch({ type: 'CANCEL' });
+  };
+
+  const run = (event) => {
+    event.preventDefault();
+    if (activeRequest.current) return;
+    playback.reset();
+    let request;
+    try { request = buildRequest(simulation.draft); }
+    catch (error) { dispatch({ type: 'FAIL', message: error.message }); return; }
+    dispatch({ type: 'START' });
+    const token = ++generation.current;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      if (generation.current !== token) return;
+      invalidateRequest();
+      dispatch({ type: 'FAIL', message: 'The request timed out. Check the local server and try again.' });
+    }, 15000);
+    activeRequest.current = { controller, timer };
+    simulateExperiment(request, controller.signal)
+      .then((trace) => {
+        if (generation.current !== token) return;
+        window.clearTimeout(timer);
+        activeRequest.current = null;
+        dispatch({ type: 'SUCCESS', trace });
+      })
+      .catch((error) => {
+        if (generation.current !== token) return;
+        window.clearTimeout(timer);
+        activeRequest.current = null;
+        dispatch({ type: 'FAIL', message: error.message || 'Unable to prepare the simulation.' });
+      });
+  };
 
   useEffect(() => {
     const controller = new AbortController();
@@ -56,34 +124,17 @@ export default function App() {
         <section className="page-heading" aria-labelledby="page-title">
           <p className="eyebrow">Operating systems / Memory</p>
           <h1 id="page-title">Virtual memory</h1>
-          <p className="page-description">Understand paging, address translation, and replacement policies.</p>
+          <p className="page-description">Run a trace. Follow each address. See every memory decision.</p>
         </section>
 
         {connection.status === 'error' && (
           <p className="connection-error">Unable to reach the local server. Start the Python API on port 8000 and check the connection again.</p>
         )}
 
-        <section className="workspace" aria-labelledby="workspace-title">
-          <div className="workspace-header">
-            <h2 id="workspace-title">Workspace</h2>
-            <span className="workspace-state">Not configured</span>
-          </div>
-          <div className="empty-state">
-            <div className="memory-icon" aria-hidden="true">
-              <svg viewBox="0 0 32 32" fill="none">
-                <rect x="7" y="5" width="18" height="22" rx="3" />
-                <path d="M7 12.5h18M7 19.5h18M11 9h1M11 16h1M11 23h1" />
-              </svg>
-            </div>
-            <h3>A place to explore memory.</h3>
-            <p>Configure a memory model, follow each address,<br className="desktop-break" /> and see how every decision unfolds.</p>
-            <span className="upcoming-note">Configuration tools are coming next.</span>
-          </div>
-          <div className="workspace-footer">
-            <span>Single-process simulation</span>
-            <span>FIFO <span className="separator">/</span> LRU <span className="separator">/</span> Optimal</span>
-          </div>
-        </section>
+        <div className="simulator-layout">
+          <ConfigurationForm draft={simulation.draft} status={simulation.status} error={simulation.error} onEdit={edit} onExample={loadExample} onRun={run} onCancel={cancel} />
+          <SimulationView trace={simulation.trace} status={simulation.status} playback={playback} />
+        </div>
       </main>
 
       <footer className="app-footer">

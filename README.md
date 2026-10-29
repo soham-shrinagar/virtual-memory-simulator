@@ -2,7 +2,7 @@
 
 A Linux-first university OS project with a **Python simulation engine/backend** and a **React + JavaScript interface**. React components use JSX. It is an educational model, not a replacement for the host operating system's memory manager.
 
-**Current milestone: Phase 3.** The pure Python engine runs FIFO, LRU, and Optimal replacement. Stateless simulation/comparison APIs, immutable traces, structured validation errors, versioned experiment import/export, example workloads, and a runtime-validated JavaScript API client are implemented. The interactive configuration/playback interface is Phase 4 and is not implemented yet.
+**Current milestone: Phase 4.** The interactive simulator supports memory configuration, page/address inputs, FIFO/LRU/Optimal, address calculations, frame/page-table visualization, policy explanations, playback, and reference history. The Python simulation/comparison APIs and versioned experiment files are also available. Comparison charts and file import/export controls in the interface are planned for Phase 5.
 
 Use the engine independently of the web server:
 
@@ -16,6 +16,18 @@ print(result.events[-1].reason)
 ```
 
 Input mode is `pages` (default) or `addresses`; address text also accepts `0x` hexadecimal values. Policies are `fifo`, `lru`, and `optimal`. Optimal uses the complete fixed workload as an offline benchmark. Initial state is empty; frames/pages are numbered from zero; event steps start at one. Faults include free-frame loads, while replacements count actual evictions only.
+
+## Interactive simulator
+
+1. Choose page size, virtual-page count, physical frames, and replacement policy. Page/frame IDs start at zero. The configuration shows virtual address space separately from physical capacity.
+2. Choose page numbers or virtual byte addresses, then enter comma/whitespace-separated references. **Load example** fills a suitable example for the selected input mode and resets memory sizes to the defaults.
+3. Select **Run simulation** to calculate the complete trace. Playback starts at step 0 with empty frames; select **Next** to perform one reference or **Play** to advance automatically.
+4. Use **Previous**, the timeline, or a history-step link to revisit a saved state. **Reset** returns to step 0 while retaining the same experiment. Speed ranges from 0.5× to 4×; autoplay stops at the final step or when the page becomes hidden.
+5. Inspect the selected reference's address calculation, frame highlights, page table, replacement explanation, and policy metadata. The main counters/rates belong to the selected step. **Run totals** are labeled separately and always describe the complete workload. Initial rates are unavailable until a reference completes.
+
+Editing any setting or loading an example stops playback, cancels pending work, and clears the old trace. Run again to apply the new experiment. Validation failures preserve the editor contents; a pending request can be canceled, and obsolete responses cannot overwrite a newer run. Requests time out after 15 seconds with a retryable error.
+
+The page table scrolls within its panel for large address spaces. Reference history renders at most 12 completed rows; the timeline can reach every step in a 1,000-reference trace. Controls support keyboard navigation and show hits, loads, and evictions with text as well as color.
 
 ## Simulation API
 
@@ -124,7 +136,7 @@ npm --prefix frontend run test -- --run
 npm --prefix frontend run build
 ```
 
-Vite builds the JavaScript/JSX frontend. Backend tests cover health responses, missing/frontend assets, API 404 behavior, independence from the working directory, and occupied-port errors. React tests cover backend connection, retry after failure, Strict Mode, and malformed API responses. API responses are validated at runtime before the UI uses them.
+Vite builds the JavaScript/JSX frontend. Backend tests cover algorithms, translation, validation, HTTP contracts, JSON round-trips, concurrency, and packaging foundations. React tests cover connection handling, runtime API validation, selected-step rendering, playback boundaries/speed, Strict Mode timer cleanup, bounded history, duplicate submissions, cancellation, stale responses, and timeouts. API responses are validated at runtime before the UI uses them.
 
 ## Build and verify an installable release
 
