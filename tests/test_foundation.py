@@ -5,7 +5,7 @@ import socket
 
 from fastapi.testclient import TestClient
 
-from vmsim import __version__
+from vmsim import IMPLEMENTATION_PHASE, __version__
 from vmsim.__main__ import main
 from vmsim.web.app import create_app
 
@@ -16,7 +16,7 @@ def test_api_stays_usable_before_frontend_is_built(tmp_path: Path) -> None:
         assert response.status_code == 200
         assert response.json() == {
             "status": "ok", "application": "vmsim", "version": __version__,
-            "phase": 0, "frontend_ready": False,
+            "phase": IMPLEMENTATION_PHASE, "frontend_ready": False,
         }
         assert client.get("/").status_code == 503
         assert "Frontend build missing" in client.get("/").json()["detail"]

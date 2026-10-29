@@ -1,2 +1,2 @@
-"""Pure Python domain engine. Simulation implementation begins in Phase 1."""
+"""Pure Python domain model, address translation, and simulation engine."""
 

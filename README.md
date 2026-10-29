@@ -2,7 +2,7 @@
 
 A Linux-first university OS project with a **Python simulation engine/backend** and a **React + JavaScript interface**. React components use JSX. It is an educational model, not a replacement for the host operating system's memory manager.
 
-**Current milestone: Phase 0.** The package, health API, React application shell, development proxy, tests, frontend build, and Python release packaging are available. Memory configuration, translation, replacement algorithms, and playback are scheduled for subsequent phases.
+**Current milestone: Phase 1.** The pure Python core validates memory configuration and page/address workloads, translates addresses, allocates free frames, and returns immutable reference states and metrics. Replacement policies arrive in Phase 2; HTTP simulation integration in Phase 3; interactive controls in Phase 4.
 
 ## Requirements
 
@@ -96,7 +96,7 @@ Keep direct Python dependencies in `requirements.in` and `pyproject.toml` synchr
 ## Layout
 
 ```text
-src/vmsim/core/          Pure Python simulation logic (begins in Phase 1)
+src/vmsim/core/          Pure Python memory model, validation, and translation
 src/vmsim/web/           FastAPI adapter and generated frontend assets
 frontend/src/           JavaScript/JSX React UI, API client, and frontend tests
 tests/                  Python tests
