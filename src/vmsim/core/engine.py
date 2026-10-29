@@ -1,8 +1,9 @@
-"""One authoritative reference-processing path; initially free-frame loads only."""
+"""One authoritative reference-processing path shared by all policies."""
 
 from collections.abc import Sequence
 
-from vmsim.core.models import Event, Frame, MemoryConfig, Metrics, PageTableEntry, SimulationResult, Snapshot
+from vmsim.core.models import Event, Frame, MemoryConfig, Metrics, PageTableEntry, PolicyState, SimulationResult, Snapshot
+from vmsim.core.policies import create_policy
 from vmsim.core.translation import normalize_and_validate, physical_address
 from vmsim.core.validation import require_int
 
@@ -18,8 +19,8 @@ class Memory:
         self.mapping: dict[int, int] = {}
         self.metrics = Metrics()
 
-    def snapshot(self) -> Snapshot:
-        return Snapshot(self.metrics.references, tuple(Frame(i, page) for i, page in enumerate(self.frames)), self.metrics)
+    def snapshot(self, policy_state: PolicyState | None = None) -> Snapshot:
+        return Snapshot(self.metrics.references, tuple(Frame(i, page) for i, page in enumerate(self.frames)), self.metrics, policy_state)
 
     @property
     def page_table(self) -> tuple[PageTableEntry, ...]:
@@ -28,27 +29,59 @@ class Memory:
     def resolve(self, page: int) -> tuple[int, bool]:
         require_int(page, "page", 0, self.config.virtual_pages - 1)
         if page in self.mapping:
-            self.metrics = Metrics(self.metrics.hits + 1, self.metrics.faults)
+            self.metrics = Metrics(self.metrics.hits + 1, self.metrics.faults, self.metrics.replacements)
             return self.mapping[page], True
         try:
             frame = self.frames.index(None)
         except ValueError:
-            raise MemoryFullError("All frames are occupied; replacement is not implemented in Phase 1.") from None
+            raise MemoryFullError("Select and evict a victim before loading into full memory.") from None
         self.frames[frame] = page
         self.mapping[page] = frame
-        self.metrics = Metrics(self.metrics.hits, self.metrics.faults + 1)
+        self.metrics = Metrics(self.metrics.hits, self.metrics.faults + 1, self.metrics.replacements)
         return frame, False
 
+    def evict(self, frame: int) -> int:
+        require_int(frame, "frame_id", 0, self.config.physical_frames - 1)
+        page = self.frames[frame]
+        if page is None:
+            raise ValueError("Cannot evict an empty frame.")
+        del self.mapping[page]
+        self.frames[frame] = None
+        self.metrics = Metrics(self.metrics.hits, self.metrics.faults, self.metrics.replacements + 1)
+        return page
 
-def simulate(config: MemoryConfig, workload: str | Sequence[int], input_mode: str = "pages") -> SimulationResult:
+    def check_invariants(self) -> None:
+        occupied = [page for page in self.frames if page is not None]
+        assert len(occupied) == len(set(occupied)) == len(self.mapping)
+        assert self.mapping == {page: frame for frame, page in enumerate(self.frames) if page is not None}
+        assert self.metrics.faults - self.metrics.replacements == len(occupied)
+        assert self.metrics.replacements <= self.metrics.faults
+
+
+def simulate(
+    config: MemoryConfig, workload: str | Sequence[int], input_mode: str = "pages",
+    policy: str = "fifo", *, capture_trace: bool = True,
+) -> SimulationResult:
     accesses = normalize_and_validate(config, workload, input_mode)
+    selection = create_policy(policy, accesses)
     memory = Memory(config)
-    initial = memory.snapshot()
+    initial = memory.snapshot(selection.snapshot(memory.frames))
     events = []
-    for access in accesses:
+    for index, access in enumerate(accesses):
+        victim = None
+        reason = ""
+        if access.page not in memory.mapping and None not in memory.frames:
+            victim_frame, reason = selection.select_victim(memory.frames)
+            victim = memory.evict(victim_frame)
+            selection.on_evict(victim_frame)
         frame, hit = memory.resolve(access.page)
-        state = memory.snapshot()
-        events.append(Event(state.step, access, "hit" if hit else "fault", frame,
-                            physical_address(config, frame, access.offset), None,
-                            "Page is already resident." if hit else f"Loaded page into free frame {frame}.", state))
-    return SimulationResult(config, input_mode, None, accesses, initial, tuple(events), memory.metrics)
+        if not hit:
+            selection.on_load(frame, access.page, index)
+        selection.on_access(frame, access.page, index)
+        memory.check_invariants()
+        if capture_trace:
+            state = memory.snapshot(selection.snapshot(memory.frames))
+            events.append(Event(state.step, access, "hit" if hit else "fault", frame,
+                                physical_address(config, frame, access.offset), victim,
+                                reason or ("Page is already resident." if hit else f"Loaded page into free frame {frame}."), state))
+    return SimulationResult(config, input_mode, policy, accesses, initial, tuple(events), memory.metrics)

@@ -2,7 +2,20 @@
 
 A Linux-first university OS project with a **Python simulation engine/backend** and a **React + JavaScript interface**. React components use JSX. It is an educational model, not a replacement for the host operating system's memory manager.
 
-**Current milestone: Phase 1.** The pure Python core validates memory configuration and page/address workloads, translates addresses, allocates free frames, and returns immutable reference states and metrics. Replacement policies arrive in Phase 2; HTTP simulation integration in Phase 3; interactive controls in Phase 4.
+**Current milestone: Phase 2.** The pure Python engine validates configurations/workloads, translates addresses, and runs FIFO, LRU, or Optimal replacement with deterministic victim selection, explanations, immutable states, and hit/fault/replacement metrics. HTTP integration arrives in Phase 3; interactive controls in Phase 4.
+
+Use the engine independently of the web server:
+
+```python
+from vmsim.core.engine import simulate
+from vmsim.core.models import MemoryConfig
+
+result = simulate(MemoryConfig(physical_frames=3), "1,2,3,1,4,2,5", policy="fifo")
+print(result.metrics.faults)  # 5
+print(result.events[-1].reason)
+```
+
+Input mode is `pages` (default) or `addresses`; address text also accepts `0x` hexadecimal values. Policies are `fifo`, `lru`, and `optimal`. Optimal uses the complete fixed workload as an offline benchmark. Initial state is empty; frames/pages are numbered from zero; event steps start at one. Faults include free-frame loads, while replacements count actual evictions only.
 
 ## Requirements
 

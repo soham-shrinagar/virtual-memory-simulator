@@ -83,9 +83,11 @@ def test_no_eviction_trace_preserves_offsets_and_initial_snapshot():
         result.events[0].state.frames[0].page = 5
 
 
-def test_phase_one_reports_full_memory_instead_of_wrong_eviction():
+def test_raw_memory_requires_explicit_eviction_when_full():
+    memory = Memory(MemoryConfig(physical_frames=1))
+    memory.resolve(0)
     with pytest.raises(MemoryFullError):
-        simulate(MemoryConfig(physical_frames=1), [0, 1])
+        memory.resolve(1)
 
 
 def test_more_frames_than_pages_and_maximum_trace():
