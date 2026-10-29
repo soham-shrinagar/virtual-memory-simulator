@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "config": {"page_size": 4096, "virtual_pages": 8, "physical_frames": 3},
+  "workload": [1, 2, 3, 4, 1, 2, 5, 1, 2, 3, 4, 5],
+  "input_mode": "pages",
+  "policy": "fifo"
+}

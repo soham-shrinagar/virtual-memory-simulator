@@ -3,10 +3,14 @@
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from vmsim import __version__
+from vmsim.core.validation import ValidationError
+from vmsim.web.limits import BodySizeLimit
+from vmsim.web.routes import router
 from vmsim.web.schemas import HealthResponse
 
 
@@ -19,12 +23,25 @@ def create_app(static_dir: Path | None = None) -> FastAPI:
         docs_url=None,
         redoc_url=None,
     )
+    application.add_middleware(BodySizeLimit)
+
+    @application.exception_handler(ValidationError)
+    async def domain_error(request, error):
+        return JSONResponse(status_code=422, content={"errors": [{"field": error.field, "message": str(error), "token_index": error.token_index}]})
+
+    @application.exception_handler(RequestValidationError)
+    async def request_error(request, error):
+        errors = [{"field": ".".join(str(part) for part in item["loc"] if part != "body") or "body",
+                   "message": item["msg"], "token_index": None} for item in error.errors()]
+        return JSONResponse(status_code=422, content={"errors": errors})
 
     @application.get("/api/health", response_model=HealthResponse)
     def health() -> HealthResponse:
         return HealthResponse(
             version=__version__, frontend_ready=(assets / "index.html").is_file()
         )
+
+    application.include_router(router)
 
     @application.api_route(
         "/api/{unmatched:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"]

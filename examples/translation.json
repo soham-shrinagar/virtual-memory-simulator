@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "config": {"page_size": 4096, "virtual_pages": 8, "physical_frames": 3},
+  "workload": [4096, 8300, 4097],
+  "input_mode": "addresses",
+  "policy": "lru"
+}

@@ -37,7 +37,7 @@ def test_packaged_assets_do_not_depend_on_working_directory(
         assert client.get("/assets/app.js").status_code == 200
         assert client.get("/api/health").json()["frontend_ready"] is True
         assert client.get("/api/does-not-exist").status_code == 404
-        assert client.post("/api/simulate", json={}).status_code == 404
+        assert client.post("/api/does-not-exist", json={}).status_code == 404
         assert client.get("/assets/missing.js").status_code == 404
 
 

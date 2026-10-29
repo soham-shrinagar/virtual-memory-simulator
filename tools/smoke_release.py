@@ -10,7 +10,7 @@ import sys
 import tempfile
 import time
 from urllib.error import HTTPError, URLError
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 
 import vmsim
 
@@ -63,6 +63,22 @@ def main() -> int:
             for asset in parser.assets:
                 with urlopen(base + asset, timeout=5) as response:
                     assert response.status == 200 and response.read()
+
+            def post(path, payload):
+                request = Request(base + path, data=json.dumps(payload).encode(),
+                                  headers={"Content-Type": "application/json"}, method="POST")
+                with urlopen(request, timeout=10) as response:
+                    return json.load(response)
+
+            for policy, faults in (("fifo", 5), ("lru", 6), ("optimal", 5)):
+                result = post("/api/simulate", {"workload": [1, 2, 3, 1, 4, 2, 5], "policy": policy})
+                assert result["metrics"]["faults"] == faults
+                assert len(result["events"]) == 7
+            comparison = post("/api/compare", {"workload": [1, 2, 3, 4, 1, 2, 5, 1, 2, 3, 4, 5],
+                                               "policies": ["fifo"], "frame_counts": [3, 4]})
+            assert [row["metrics"]["faults"] for row in comparison["rows"]] == [9, 10]
+            experiment = post("/api/experiments/export", {"workload": "4096,8300,4097", "input_mode": "addresses"})
+            assert post("/api/experiments/import", experiment) == experiment
             try:
                 urlopen(base + "/api/unknown", timeout=5)
             except HTTPError as error:
@@ -83,7 +99,7 @@ def main() -> int:
             print(output.strip())
         if sys.platform != "win32":
             assert server.returncode == 0, "Server did not shut down cleanly on SIGINT"
-        print(f"PASS: installed wheel, health API, React HTML, {len(parser.assets)} local assets, API 404")
+        print(f"PASS: installed wheel, health API, React HTML, {len(parser.assets)} local assets, simulation/comparison/experiment APIs, API 404")
         print(f"Package location: {Path(vmsim.__file__).resolve()}")
     return 0
 

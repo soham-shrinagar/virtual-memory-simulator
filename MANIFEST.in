@@ -6,7 +6,8 @@ include frontend/.npmrc
 include frontend/.nvmrc
 include frontend/index.html
 include frontend/vite.config.js
-recursive-include frontend/src *.js *.jsx *.css
+recursive-include frontend/src *.js *.jsx *.css *.json
+recursive-include examples *.json
 recursive-include tools *.py
 prune docs
 prune doc
