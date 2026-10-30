@@ -1,6 +1,6 @@
 import { formatBytes } from '../state/simulation.js';
 
-export default function ConfigurationForm({ draft, status, error, onEdit, onExample, onRun, onCancel }) {
+export default function ConfigurationForm({ draft, status, error, onEdit, onExample, onRun, onCancel, showRun = true }) {
   const pages = Number(draft.virtualPages);
   const frames = Number(draft.physicalFrames);
   const size = Number(draft.pageSize);
@@ -10,7 +10,7 @@ export default function ConfigurationForm({ draft, status, error, onEdit, onExam
   const change = (field) => (event) => onEdit(field, event.target.value);
 
   return (
-    <form className="configuration panel" onSubmit={onRun} aria-label="Memory configuration" noValidate>
+    <form className="configuration panel" onSubmit={showRun ? onRun : (event) => event.preventDefault()} aria-label="Memory configuration" noValidate>
       <div className="section-heading"><h2>Configuration</h2><button className="text-button" type="button" onClick={onExample}>Load example</button></div>
       <label htmlFor="page-size">Page size</label>
       <select id="page-size" value={draft.pageSize} onChange={change('pageSize')}>
@@ -36,10 +36,10 @@ export default function ConfigurationForm({ draft, status, error, onEdit, onExam
       <textarea id="workload" rows="4" value={draft.workload} onChange={change('workload')} maxLength="65536" aria-describedby="workload-hint" spellCheck="false" />
       <p id="workload-hint" className="field-hint">Separate with commas or spaces. Up to 1,000 references.{maxReference !== null && <> Range: 0–{maxReference.toLocaleString('en-US')}.</>}{draft.inputMode === 'addresses' && ' Hexadecimal (0x) is also accepted.'}</p>
       {error && <p className="form-error" role="alert">{error}</p>}
-      <div className="run-actions">
+      {showRun && <div className="run-actions">
         <button className="primary-button" type="submit" disabled={status === 'loading'}>{status === 'loading' ? 'Preparing trace…' : 'Run simulation'}</button>
         {status === 'loading' && <button className="button" type="button" onClick={onCancel}>Cancel</button>}
-      </div>
+      </div>}
       <p className="field-hint form-footnote">Editing a setting starts a new experiment.</p>
     </form>
   );

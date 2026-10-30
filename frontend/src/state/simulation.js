@@ -7,6 +7,8 @@ export const initialState = { draft: defaultDraft, trace: null, status: 'idle', 
 
 export function simulationReducer(state, action) {
   switch (action.type) {
+    case 'LOAD':
+      return { ...initialState, draft: action.draft };
     case 'EDIT':
       return { ...initialState, draft: { ...state.draft, [action.field]: action.value } };
     case 'EXAMPLE':

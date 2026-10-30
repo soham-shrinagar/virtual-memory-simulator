@@ -1,5 +1,8 @@
 import { useEffect, useReducer, useRef, useState } from 'react';
-import { getHealth, simulateExperiment } from './api/client.js';
+import { exportExperiment, getHealth, importExperiment, simulateExperiment } from './api/client.js';
+import ComparisonView from './components/ComparisonView.jsx';
+import useRequest from './hooks/useRequest.js';
+import { downloadFile, experimentDraft } from './state/files.js';
 import ConfigurationForm from './components/ConfigurationForm.jsx';
 import SimulationView from './components/SimulationView.jsx';
 import usePlayback from './hooks/usePlayback.js';
@@ -12,6 +15,9 @@ export default function App() {
   const playback = usePlayback(simulation.trace);
   const generation = useRef(0);
   const activeRequest = useRef(null);
+  const [view, setView] = useState('simulator');
+  const fileRequest = useRequest();
+  const fileInput = useRef(null);
 
   const invalidateRequest = () => {
     generation.current += 1;
@@ -25,15 +31,39 @@ export default function App() {
   useEffect(() => () => invalidateRequest(), []);
 
   const edit = (field, value) => {
+    fileRequest.reset();
     invalidateRequest();
     playback.reset();
     dispatch({ type: 'EDIT', field, value });
   };
 
   const loadExample = () => {
+    fileRequest.reset();
     invalidateRequest();
     playback.reset();
     dispatch({ type: 'EXAMPLE' });
+  };
+
+  const loadDraft = (draft) => {
+    invalidateRequest();
+    playback.reset();
+    dispatch({ type: 'LOAD', draft });
+  };
+  const save = () => fileRequest.run((signal) => exportExperiment({ schema_version: 1, ...buildRequest(simulation.draft) }, signal),
+    (experiment) => downloadFile('experiment.json', JSON.stringify(experiment, null, 2) + '\n', 'application/json'));
+  const open = (event) => {
+    const file = event.target.files[0];
+    event.target.value = '';
+    if (!file) return;
+    playback.pause();
+    fileRequest.run(async (signal) => {
+      if (file.size > 131072) throw new Error('Experiment files must be at most 128 KiB.');
+      let data;
+      try { data = JSON.parse(await file.text()); }
+      catch { throw new Error('Choose a valid JSON experiment file.'); }
+      if (signal.aborted) throw new Error('Import canceled.');
+      return importExperiment(data, signal);
+    }, (experiment) => loadDraft(experimentDraft(experiment)));
   };
 
   const cancel = () => {
@@ -131,9 +161,20 @@ export default function App() {
           <p className="connection-error">Unable to reach the local server. Start the Python API on port 8000 and check the connection again.</p>
         )}
 
+        <div className="workspace-toolbar">
+          <nav aria-label="Workspace view">{['simulator', 'compare'].map((name) => <button key={name} className="view-button" aria-label={`${name} view`} aria-pressed={view === name} onClick={() => { playback.pause(); setView(name); }}>{name === 'simulator' ? 'Simulator' : 'Compare'}</button>)}</nav>
+          <div className="file-actions">
+            <button className="button" disabled={fileRequest.busy} onClick={save}>Save JSON</button>
+            <button className="button" disabled={fileRequest.busy} onClick={() => fileInput.current.click()}>Load JSON</button>
+            <input ref={fileInput} type="file" accept=".json,application/json" aria-label="Experiment file" hidden onChange={open} />
+            {fileRequest.busy && <button className="button" onClick={fileRequest.reset}>Cancel file operation</button>}
+          </div>
+        </div>
+        {fileRequest.error && <p className="form-error" role="alert">{fileRequest.error}</p>}
         <div className="simulator-layout">
-          <ConfigurationForm draft={simulation.draft} status={simulation.status} error={simulation.error} onEdit={edit} onExample={loadExample} onRun={run} onCancel={cancel} />
-          <SimulationView trace={simulation.trace} status={simulation.status} playback={playback} />
+          <ConfigurationForm draft={simulation.draft} status={simulation.status} error={simulation.error} onEdit={edit} onExample={loadExample} onRun={run} onCancel={cancel} showRun={view === 'simulator'} />
+          {view === 'simulator' ? <SimulationView trace={simulation.trace} status={simulation.status} playback={playback} />
+            : <ComparisonView draft={simulation.draft} onBelady={() => { fileRequest.reset(); loadDraft({ pageSize: '4096', virtualPages: '8', physicalFrames: '3', inputMode: 'pages', policy: 'fifo', workload: '1, 2, 3, 4, 1, 2, 5, 1, 2, 3, 4, 5' }); }} />}
         </div>
       </main>
 
@@ -144,4 +185,3 @@ export default function App() {
     </div>
   );
 }
-

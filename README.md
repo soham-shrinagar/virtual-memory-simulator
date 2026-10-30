@@ -2,7 +2,7 @@
 
 A Linux-first university OS project with a **Python simulation engine/backend** and a **React + JavaScript interface**. React components use JSX. It is an educational model, not a replacement for the host operating system's memory manager.
 
-**Current milestone: Phase 4.** The interactive simulator supports memory configuration, page/address inputs, FIFO/LRU/Optimal, address calculations, frame/page-table visualization, policy explanations, playback, and reference history. The Python simulation/comparison APIs and versioned experiment files are also available. Comparison charts and file import/export controls in the interface are planned for Phase 5.
+**Current milestone: Phase 5.** The simulator includes FIFO/LRU/Optimal playback, address translation, frame/page-table visualization, fresh-run comparison sweeps, local SVG charts, Belady's anomaly, and JSON/CSV files.
 
 Use the engine independently of the web server:
 
@@ -28,6 +28,12 @@ Input mode is `pages` (default) or `addresses`; address text also accepts `0x` h
 Editing any setting or loading an example stops playback, cancels pending work, and clears the old trace. Run again to apply the new experiment. Validation failures preserve the editor contents; a pending request can be canceled, and obsolete responses cannot overwrite a newer run. Requests time out after 15 seconds with a retryable error.
 
 The page table scrolls within its panel for large address spaces. Reference history renders at most 12 completed rows; the timeline can reach every step in a 1,000-reference trace. Controls support keyboard navigation and show hits, loads, and evictions with text as well as color.
+
+## Comparison and files
+
+Select **Compare**, choose an inclusive frame range (1–32), then **Compare**. Each FIFO/LRU/Optimal run starts empty. The table and SVG chart show returned fault counts; a FIFO increase is called out as Belady's anomaly. **Belady preset** loads the classic workload and the 3–4 frame sweep (FIFO: 9 then 10 faults). Editing settings or the sweep clears obsolete results. Changing views pauses playback.
+
+**Export CSV** saves every comparison row with raw counts and unrounded fractional rates. **Save JSON** validates and downloads the current experiment; **Load JSON** validates a file up to 128 KiB and restores configuration, input mode, policy, and references. Run again to reproduce its trace. Invalid files preserve the editor. CSV contains results; JSON contains reproducible inputs, rather than playback position or comparison range.
 
 ## Simulation API
 
