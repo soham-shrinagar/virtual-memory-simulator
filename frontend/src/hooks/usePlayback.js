@@ -1,4 +1,4 @@
-import { useEffect, useReducer } from 'react';
+import { useEffect, useLayoutEffect, useReducer } from 'react';
 
 function reducer(state, action) {
   if (action.type === 'TRACE') return { ...state, trace: action.trace, cursor: 0, playing: false };
@@ -22,7 +22,9 @@ export default function usePlayback(trace) {
   const playing = active && state.playing;
   const length = trace?.events.length ?? 0;
 
-  useEffect(() => { dispatch({ type: 'TRACE', trace }); }, [trace]);
+  // Install the trace before its controls become interactive. A passive effect
+  // could otherwise reset a seek made immediately after the response is shown.
+  useLayoutEffect(() => { dispatch({ type: 'TRACE', trace }); }, [trace]);
 
   useEffect(() => {
     if (!playing || cursor >= length) return;

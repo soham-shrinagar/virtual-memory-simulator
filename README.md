@@ -2,7 +2,7 @@
 
 A Linux-first university OS project with a **Python simulation engine/backend** and a **React + JavaScript interface**. React components use JSX. It is an educational model, not a replacement for the host operating system's memory manager.
 
-**Current milestone: Phase 5.** The simulator includes FIFO/LRU/Optimal playback, address translation, frame/page-table visualization, fresh-run comparison sweeps, local SVG charts, Belady's anomaly, and JSON/CSV files.
+**Current milestone: Phase 6.** The required simulator and comparison features are implemented. Fresh Linux/Windows package installations, local assets, offline server operation, launch errors, and maximum-workload benchmarks have been checked. Native desktop browser acceptance remains a separate manual check; see verification scope below.
 
 Use the engine independently of the web server:
 
@@ -157,6 +157,30 @@ python3 -m venv .venv-release
 ```
 
 The smoke tool launches the installed package from an unrelated temporary directory, checks the API, HTML, and compiled assets over real HTTP, and shuts the server down. It rejects editable/source imports. It needs no Node process. Distribute the wheel and `requirements.txt`; install them into a fresh virtual environment and run that environment's `python -m vmsim`. Example JSON files and frontend contract fixtures are included in the source archive.
+
+Rehearse both distributions in disposable, fresh virtual environments:
+
+```bash
+.venv/bin/python tools/verify_release.py --wheel dist/vmsim_os-0.1.0-py3-none-any.whl --source dist/vmsim_os-0.1.0.tar.gz
+```
+
+This checks archive contents, installs the pinned requirements and each distribution, and runs the installed-package smoke check. Initial installation needs internet or a populated pip cache. During the smoke check, outbound socket connections are blocked in the server child only; its HTTP API and local React assets must still work. Machine networking is unchanged. Source archives include staged assets, so installing either distribution needs no Node runtime. Rebuilding edited frontend source still needs Node.
+
+## Verification scope and model limits
+
+Recorded on 30 October 2026: Ubuntu 24.04.3 x86-64 under WSL2 (kernel 5.15.167.4, Python 3.12.3) and Windows 11 (Python 3.13.1); Node 22.23.2 for builds. Both platforms passed 95 Python tests, 42 JavaScript tests, production builds, and fresh wheel/source installations. Linux shutdown with SIGINT exits cleanly. Chromium 156.0.8078.4 rendered the application under WSLg. The full Firefox/Chromium desktop demo has not yet been completed on an independent Linux desktop/VM; do not treat WSL API/build tests as that check.
+
+Measure the bounded workload on your demo machine, with the server running:
+
+```bash
+.venv/bin/python tools/benchmark.py --url http://127.0.0.1:8000
+```
+
+The script uses 1,000 references, 256 virtual pages, 32 frames, and a sweep of all 96 policy/frame pairs. It reports five warmed repetitions with median and maximum times, separating engine/JSON work from HTTP. Initial WSL runs varied with machine load: HTTP Optimal medians 0.65–1.43 seconds; full comparison medians 1.31–2.22 seconds (maximum 3.14 seconds). The provisional 1-second trace / 3-second sweep targets are not guaranteed under contention. Browser rendering/control latency is excluded from these measurements.
+
+The model uses one process, a flat page table, and successful abstract page loads. It does not manipulate Linux memory, access swap, emulate dirty writeback/permissions/multilevel paging, or measure hardware timing. LRU is exact simulated recency; Optimal uses future knowledge. TLB, CLOCK, synthetic generators, and effective-access-time formulas are outside the required release.
+
+Suggested 5–7 minute demo: run the default FIFO workload (5 faults, 2 hits); inspect a load, hit, and replacement; step backward/reset/replay; use address inputs `4096,8300,4097` to explain offsets; compare all policies; load Belady's preset (FIFO 9→10 faults for 3→4 frames); export CSV and save/load JSON. Repeat this flow in Firefox and Chromium on the target Linux desktop, check keyboard controls/narrow screens, and stop the server with Ctrl+C.
 
 `requirements.txt` contains pinned runtime dependencies; `requirements-dev.txt` additionally pins test/build/locking tools. `package-lock.json` locks the frontend. After intentionally changing Python dependencies, regenerate both locks and test on Linux and Windows:
 

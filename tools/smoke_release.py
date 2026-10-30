@@ -22,6 +22,8 @@ class AssetParser(HTMLParser):
 
     def handle_starttag(self, tag, attrs) -> None:
         for name, value in attrs:
+            if name in {"src", "href"} and value:
+                assert not value.startswith(("http:", "https:", "//")), "Runtime assets must be local"
             if name in {"src", "href"} and value and value.startswith("/assets/"):
                 self.assets.append(value)
 
@@ -34,8 +36,25 @@ def main() -> int:
         port = probe.getsockname()[1]
     base = f"http://127.0.0.1:{port}"
     with tempfile.TemporaryDirectory(prefix="vmsim-release-") as unrelated:
+        # Block outbound connections in this child only, without changing machine
+        # networking. The runtime must function using loopback and local assets.
+        offline_launch = '''
+import ipaddress, runpy, socket
+original_connect = socket.socket.connect
+def local_connect(sock, address):
+    if sock.family in (socket.AF_INET, socket.AF_INET6):
+        try:
+            local = ipaddress.ip_address(address[0]).is_loopback
+        except ValueError:
+            local = address[0] == 'localhost'
+        if not local:
+            raise OSError('Release check blocks outbound network access')
+    return original_connect(sock, address)
+socket.socket.connect = local_connect
+runpy.run_module('vmsim', run_name='__main__')
+'''
         server = subprocess.Popen(
-            [sys.executable, "-m", "vmsim", "--port", str(port)],
+            [sys.executable, "-c", offline_launch, "--port", str(port)],
             cwd=unrelated,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
@@ -54,6 +73,9 @@ def main() -> int:
             else:
                 raise RuntimeError("Installed server did not become ready")
             assert health["status"] == "ok" and health["frontend_ready"] is True
+            conflict = subprocess.run([sys.executable, '-m', 'vmsim', '--port', str(port)],
+                                      cwd=unrelated, capture_output=True, text=True, timeout=10)
+            assert conflict.returncode == 1 and 'choose another --port' in conflict.stderr
             with urlopen(base, timeout=5) as response:
                 html = response.read().decode()
             assert "VM Lab" in html
@@ -99,7 +121,7 @@ def main() -> int:
             print(output.strip())
         if sys.platform != "win32":
             assert server.returncode == 0, "Server did not shut down cleanly on SIGINT"
-        print(f"PASS: installed wheel, health API, React HTML, {len(parser.assets)} local assets, simulation/comparison/experiment APIs, API 404")
+        print(f"PASS: installed package, outbound connections blocked, health API, React HTML, {len(parser.assets)} local assets, simulation/comparison/experiment APIs, API 404")
         print(f"Package location: {Path(vmsim.__file__).resolve()}")
     return 0
 
