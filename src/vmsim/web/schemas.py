@@ -1,17 +1,14 @@
-"""Public API contracts for the application foundation."""
+"""Strict request and response contracts for the local API."""
 
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StrictInt, model_validator
-
-from vmsim import IMPLEMENTATION_PHASE
 
 
 class HealthResponse(BaseModel):
     status: Literal["ok"] = "ok"
     application: Literal["vmsim"] = "vmsim"
     version: str
-    phase: int = Field(default=IMPLEMENTATION_PHASE, ge=0, le=7)
     frontend_ready: bool
 
 

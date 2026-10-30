@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import App from './App.jsx';
 import contracts from './test/fixtures/contracts.json';
 
-const health = { status: 'ok', application: 'vmsim', version: '0.1.0', phase: 4, frontend_ready: true };
+const health = { status: 'ok', application: 'vmsim', version: '0.1.0', frontend_ready: true };
 const response = (data) => ({ ok: true, json: async () => data });
 const policyTrace = (policy) => contracts.simulations.find((trace) => trace.policy === policy);
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.useRealTimers(); });

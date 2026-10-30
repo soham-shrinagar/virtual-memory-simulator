@@ -5,7 +5,7 @@ import contracts from './test/fixtures/contracts.json';
 import { comparisonCsv } from './state/files.js';
 
 const response = (data) => ({ ok: true, json: async () => data });
-const health = { status: 'ok', application: 'vmsim', version: '0.1.0', phase: 5, frontend_ready: true };
+const health = { status: 'ok', application: 'vmsim', version: '0.1.0', frontend_ready: true };
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 function mount(handler = () => response(contracts.comparison)) {
   const fetcher = vi.fn((url, options) => Promise.resolve(url === '/api/health' ? response(health) : handler(url, options.body, options)));

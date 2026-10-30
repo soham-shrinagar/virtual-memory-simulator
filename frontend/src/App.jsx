@@ -1,11 +1,11 @@
 import { useEffect, useReducer, useRef, useState } from 'react';
 import { exportExperiment, getHealth, importExperiment, simulateExperiment } from './api/client.js';
 import ComparisonView from './components/ComparisonView.jsx';
-import useRequest from './hooks/useRequest.js';
-import { downloadFile, experimentDraft } from './state/files.js';
 import ConfigurationForm from './components/ConfigurationForm.jsx';
 import SimulationView from './components/SimulationView.jsx';
 import usePlayback from './hooks/usePlayback.js';
+import useRequest from './hooks/useRequest.js';
+import { downloadFile, experimentDraft } from './state/files.js';
 import { buildRequest, initialState, simulationReducer } from './state/simulation.js';
 
 export default function App() {
@@ -13,42 +13,34 @@ export default function App() {
   const [attempt, setAttempt] = useState(0);
   const [simulation, dispatch] = useReducer(simulationReducer, initialState);
   const playback = usePlayback(simulation.trace);
-  const generation = useRef(0);
-  const activeRequest = useRef(null);
+  const simulationRequest = useRequest();
   const [view, setView] = useState('simulator');
   const fileRequest = useRequest();
   const fileInput = useRef(null);
 
-  const invalidateRequest = () => {
-    generation.current += 1;
-    if (activeRequest.current) {
-      window.clearTimeout(activeRequest.current.timer);
-      activeRequest.current.controller.abort();
-      activeRequest.current = null;
-    }
-  };
-
-  useEffect(() => () => invalidateRequest(), []);
-
   const edit = (field, value) => {
     fileRequest.reset();
-    invalidateRequest();
-    playback.reset();
+    simulationRequest.reset();
     dispatch({ type: 'EDIT', field, value });
   };
 
   const loadExample = () => {
     fileRequest.reset();
-    invalidateRequest();
-    playback.reset();
+    simulationRequest.reset();
     dispatch({ type: 'EXAMPLE' });
   };
 
   const loadDraft = (draft) => {
-    invalidateRequest();
-    playback.reset();
+    simulationRequest.reset();
     dispatch({ type: 'LOAD', draft });
   };
+
+  const loadBelady = () => {
+    fileRequest.reset();
+    simulationRequest.reset();
+    dispatch({ type: 'BELADY' });
+  };
+
   const save = () => fileRequest.run((signal) => exportExperiment(buildRequest(simulation.draft), signal),
     (experiment) => downloadFile('experiment.json', JSON.stringify(experiment, null, 2) + '\n', 'application/json'));
   const open = (event) => {
@@ -60,47 +52,24 @@ export default function App() {
       if (file.size > 131072) throw new Error('Experiment files must be at most 128 KiB.');
       let text;
       try { text = await file.text(); }
-      catch { throw new Error('Choose a valid JSON experiment file.'); }
+      catch { throw new Error('Unable to read the experiment file.'); }
       if (signal.aborted) throw new Error('Import canceled.');
       return importExperiment(text, signal);
     }, (experiment) => loadDraft(experimentDraft(experiment)));
   };
 
   const cancel = () => {
-    invalidateRequest();
-    playback.reset();
-    dispatch({ type: 'CANCEL' });
+    simulationRequest.reset();
+    dispatch({ type: 'CLEAR_TRACE' });
   };
 
   const run = (event) => {
     event.preventDefault();
-    if (activeRequest.current) return;
-    playback.reset();
-    let request;
-    try { request = buildRequest(simulation.draft); }
-    catch (error) { dispatch({ type: 'FAIL', message: error.message }); return; }
-    dispatch({ type: 'START' });
-    const token = ++generation.current;
-    const controller = new AbortController();
-    const timer = window.setTimeout(() => {
-      if (generation.current !== token) return;
-      invalidateRequest();
-      dispatch({ type: 'FAIL', message: 'The request timed out. Check the local server and try again.' });
-    }, 15000);
-    activeRequest.current = { controller, timer };
-    simulateExperiment(request, controller.signal)
-      .then((trace) => {
-        if (generation.current !== token) return;
-        window.clearTimeout(timer);
-        activeRequest.current = null;
-        dispatch({ type: 'SUCCESS', trace });
-      })
-      .catch((error) => {
-        if (generation.current !== token) return;
-        window.clearTimeout(timer);
-        activeRequest.current = null;
-        dispatch({ type: 'FAIL', message: error.message || 'Unable to prepare the simulation.' });
-      });
+    dispatch({ type: 'CLEAR_TRACE' });
+    simulationRequest.run(
+      (signal) => simulateExperiment(buildRequest(simulation.draft), signal),
+      (trace) => dispatch({ type: 'SUCCESS', trace }),
+    );
   };
 
   useEffect(() => {
@@ -151,14 +120,14 @@ export default function App() {
       </header>
 
       <main>
-        <section className="page-heading" aria-labelledby="page-title">
+        <section aria-labelledby="page-title">
           <p className="eyebrow">Operating systems / Memory</p>
           <h1 id="page-title">Virtual memory</h1>
           <p className="page-description">Run a trace. Follow each address. See every memory decision.</p>
         </section>
 
         {connection.status === 'error' && (
-          <p className="connection-error">Unable to reach the local server. Start the Python API on port 8000 and check the connection again.</p>
+          <p className="connection-error">Unable to reach the local server. Start the Python server and check the connection again.</p>
         )}
 
         <div className="workspace-toolbar">
@@ -172,9 +141,19 @@ export default function App() {
         </div>
         {fileRequest.error && <p className="form-error" role="alert">{fileRequest.error}</p>}
         <div className="simulator-layout">
-          <ConfigurationForm draft={simulation.draft} status={simulation.status} error={simulation.error} onEdit={edit} onExample={loadExample} onRun={run} onCancel={cancel} showRun={view === 'simulator'} />
-          {view === 'simulator' ? <SimulationView trace={simulation.trace} status={simulation.status} playback={playback} />
-            : <ComparisonView draft={simulation.draft} onBelady={() => { fileRequest.reset(); loadDraft({ pageSize: '4096', virtualPages: '8', physicalFrames: '3', inputMode: 'pages', policy: 'fifo', workload: '1, 2, 3, 4, 1, 2, 5, 1, 2, 3, 4, 5' }); }} />}
+          <ConfigurationForm
+            draft={simulation.draft}
+            busy={simulationRequest.busy}
+            error={simulationRequest.error}
+            onEdit={edit}
+            onExample={loadExample}
+            onRun={run}
+            onCancel={cancel}
+            showRun={view === 'simulator'}
+          />
+          {view === 'simulator'
+            ? <SimulationView trace={simulation.trace} busy={simulationRequest.busy} playback={playback} />
+            : <ComparisonView draft={simulation.draft} onBelady={loadBelady} />}
         </div>
       </main>
 

@@ -39,7 +39,6 @@ export default function ComparisonView({ draft, onBelady }) {
   useLayoutEffect(() => { reset(); setResult(null); }, [draft, from, to, reset]);
   const compare = (event) => {
     event.preventDefault();
-    if (request.busy) return;
     setResult(null);
     request.run(async (signal) => {
       const { policy, ...payload } = buildRequest(draft);

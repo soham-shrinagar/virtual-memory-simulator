@@ -3,7 +3,7 @@ export const defaultDraft = {
   inputMode: 'pages', policy: 'fifo', workload: '1, 2, 3, 1, 4, 2, 5',
 };
 
-export const initialState = { draft: defaultDraft, trace: null, status: 'idle', error: null };
+export const initialState = { draft: defaultDraft, trace: null };
 
 export function simulationReducer(state, action) {
   switch (action.type) {
@@ -16,16 +16,14 @@ export function simulationReducer(state, action) {
         ...defaultDraft, inputMode: state.draft.inputMode, policy: state.draft.policy,
         workload: state.draft.inputMode === 'addresses' ? '4096, 8300, 4097' : defaultDraft.workload,
       } };
-    case 'START':
-      return { ...state, trace: null, status: 'loading', error: null };
+    case 'BELADY':
+      return { ...initialState, draft: { ...defaultDraft, workload: '1, 2, 3, 4, 1, 2, 5, 1, 2, 3, 4, 5' } };
+    case 'CLEAR_TRACE':
+      return { ...state, trace: null };
     case 'SUCCESS':
-      return { ...state, trace: action.trace, status: 'ready', error: null };
-    case 'FAIL':
-      return { ...state, trace: null, status: 'error', error: action.message };
-    case 'CANCEL':
-      return { ...state, trace: null, status: 'idle', error: null };
+      return { ...state, trace: action.trace };
     default:
-      return state;
+      throw new Error(`Unknown simulation action: ${action.type}`);
   }
 }
 

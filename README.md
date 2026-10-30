@@ -2,7 +2,7 @@
 
 A Linux-first university OS project with a **Python simulation engine/backend** and a **React + JavaScript interface**. React components use JSX. It is an educational model, not a replacement for the host operating system's memory manager.
 
-**Current milestone: Phase 7 (stability buffer).** The required simulator and comparison features are implemented. Final fixes cover JSON saving, strict duplicate-key imports, playback readiness, and faster comparison/trace serialization. Fresh Linux/Windows package installations, local assets, offline server operation, launch errors, and maximum-workload benchmarks have been checked. Native desktop browser acceptance remains a separate manual check; see verification scope below.
+Configure memory, simulate FIFO/LRU/Optimal, inspect each address and replacement, compare frame counts, and save experiments/results as JSON/CSV. The packaged app runs through one local Python server with all frontend assets included. See verification scope below for tested environments and the remaining native Linux desktop browser check.
 
 Use the engine independently of the web server:
 
@@ -41,7 +41,7 @@ Run the local server, then send JSON to these routes:
 
 | Route | Purpose |
 | --- | --- |
-| `GET /api/health` | Application/phase and frontend readiness |
+| `GET /api/health` | Application version and frontend readiness |
 | `POST /api/simulate` | Full initial state, immutable events, and final metrics |
 | `POST /api/compare` | Fresh summary runs for each policy/frame-count pair |
 | `POST /api/experiments/export` | Download a canonical schema-version-1 experiment |

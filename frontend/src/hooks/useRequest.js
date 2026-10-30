@@ -37,7 +37,7 @@ export default function useRequest() {
       if (generation.current !== token) return;
       clearTimeout(timer);
       active.current = null;
-      setState({ busy: false, error: error.message || 'Unable to complete the request.' });
+      setState({ busy: false, error: error.message });
     }
   };
   return { ...state, run, reset };

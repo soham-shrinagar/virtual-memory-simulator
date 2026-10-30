@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { StrictMode } from 'react';
 import App from './App.jsx';
 
-const health = { status: 'ok', application: 'vmsim', version: '0.1.0', phase: 0, frontend_ready: true };
+const health = { status: 'ok', application: 'vmsim', version: '0.1.0', frontend_ready: true };
 afterEach(() => vi.unstubAllGlobals());
 
 describe('foundation connection', () => {

@@ -74,7 +74,6 @@ def _simulate_validated(config, accesses, input_mode, policy, *, capture_trace):
     events = []
     for index, access in enumerate(accesses):
         victim = None
-        reason = ""
         if access.page not in memory.mapping and None not in memory.frames:
             victim_frame, reason = selection.select_victim(memory.frames)
             victim = memory.evict(victim_frame)
@@ -85,8 +84,12 @@ def _simulate_validated(config, accesses, input_mode, policy, *, capture_trace):
         selection.on_access(frame, access.page, index)
         memory.check_invariants()
         if capture_trace:
+            if hit:
+                reason = "Page is already resident."
+            elif victim is None:
+                reason = f"Loaded page into free frame {frame}."
             state = memory.snapshot(selection.snapshot(memory.frames))
             events.append(Event(state.step, access, "hit" if hit else "fault", frame,
                                 physical_address(config, frame, access.offset), victim,
-                                reason or ("Page is already resident." if hit else f"Loaded page into free frame {frame}."), state))
+                                reason, state))
     return SimulationResult(config, input_mode, policy, accesses, initial, tuple(events), memory.metrics)

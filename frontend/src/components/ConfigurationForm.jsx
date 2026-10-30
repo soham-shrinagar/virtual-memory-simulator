@@ -1,6 +1,6 @@
 import { formatBytes } from '../state/simulation.js';
 
-export default function ConfigurationForm({ draft, status, error, onEdit, onExample, onRun, onCancel, showRun = true }) {
+export default function ConfigurationForm({ draft, busy, error, onEdit, onExample, onRun, onCancel, showRun }) {
   const pages = Number(draft.virtualPages);
   const frames = Number(draft.physicalFrames);
   const size = Number(draft.pageSize);
@@ -37,8 +37,8 @@ export default function ConfigurationForm({ draft, status, error, onEdit, onExam
       <p id="workload-hint" className="field-hint">Separate with commas or spaces. Up to 1,000 references.{maxReference !== null && <> Range: 0–{maxReference.toLocaleString('en-US')}.</>}{draft.inputMode === 'addresses' && ' Hexadecimal (0x) is also accepted.'}</p>
       {error && <p className="form-error" role="alert">{error}</p>}
       {showRun && <div className="run-actions">
-        <button className="primary-button" type="submit" disabled={status === 'loading'}>{status === 'loading' ? 'Preparing trace…' : 'Run simulation'}</button>
-        {status === 'loading' && <button className="button" type="button" onClick={onCancel}>Cancel</button>}
+        <button className="primary-button" type="submit" disabled={busy}>{busy ? 'Preparing trace…' : 'Run simulation'}</button>
+        {busy && <button className="button" type="button" onClick={onCancel}>Cancel</button>}
       </div>}
       <p className="field-hint form-footnote">Editing a setting starts a new experiment.</p>
     </form>

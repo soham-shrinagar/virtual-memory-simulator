@@ -73,9 +73,9 @@ function History({ trace, cursor, onSeek }) {
   </section>;
 }
 
-export default function SimulationView({ trace, status, playback }) {
-  if (!trace) return <section className="panel empty-workspace" aria-label="Simulation workspace" aria-busy={status === 'loading'}>
-    <span className="empty-symbol" aria-hidden="true">[ &nbsp; ]</span><h2>{status === 'loading' ? 'Preparing your trace…' : 'Your memory workspace'}</h2><p>{status === 'loading' ? 'Calculating each reference and memory decision.' : 'Choose a memory model, then run a simulation.'}</p><span className="small-note">FIFO / LRU / Optimal</span>
+export default function SimulationView({ trace, busy, playback }) {
+  if (!trace) return <section className="panel empty-workspace" aria-label="Simulation workspace" aria-busy={busy}>
+    <span className="empty-symbol" aria-hidden="true">[ &nbsp; ]</span><h2>{busy ? 'Preparing your trace…' : 'Your memory workspace'}</h2><p>{busy ? 'Calculating each reference and memory decision.' : 'Choose a memory model, then run a simulation.'}</p><span className="small-note">FIFO / LRU / Optimal</span>
   </section>;
 
   const { cursor } = playback;
@@ -88,7 +88,7 @@ export default function SimulationView({ trace, status, playback }) {
       <MetricsPanel metrics={snapshot.metrics} />
       <FrameView snapshot={snapshot} event={event} />
       <p className="event-explanation" role="status">{event ? event.reason : 'All frames are empty. Advance to the first reference.'}</p>
-      <PlaybackControls playback={playback} ready />
+      <PlaybackControls playback={playback} />
       <div className="trace-summary"><span>{next ? `Next: ${trace.input_mode === 'pages' ? `P${next.page}` : `address ${next.virtual_address.toLocaleString('en-US')}`}` : 'End of trace'}</span><span>Run totals: {trace.metrics.faults} {trace.metrics.faults === 1 ? 'fault' : 'faults'} · {trace.metrics.hits} {trace.metrics.hits === 1 ? 'hit' : 'hits'}</span></div>
       <AddressBreakdown event={event} config={trace.config} />
     </section>
