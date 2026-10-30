@@ -1,17 +1,16 @@
 """JSON-safe response construction; no policy decisions occur here."""
 
-from dataclasses import asdict
-
 from vmsim.core.experiments import SCHEMA_VERSION
 
 
 def config_payload(config):
-    return {**asdict(config), "virtual_capacity": config.virtual_capacity,
+    return {"page_size": config.page_size, "virtual_pages": config.virtual_pages,
+            "physical_frames": config.physical_frames, "virtual_capacity": config.virtual_capacity,
             "physical_capacity": config.physical_capacity, "offset_bits": config.offset_bits}
 
 
 def metrics_payload(metrics):
-    return {**asdict(metrics), "references": metrics.references,
+    return {"hits": metrics.hits, "faults": metrics.faults, "replacements": metrics.replacements, "references": metrics.references,
             "hit_rate": metrics.hit_rate, "fault_rate": metrics.fault_rate}
 
 
@@ -19,8 +18,8 @@ def snapshot_payload(state):
     policy = state.policy_state
     return {
         "step": state.step,
-        "frames": [asdict(frame) for frame in state.frames],
-        "resident_pages": [asdict(entry) for entry in state.resident_pages],
+        "frames": [{"frame_id": frame.frame_id, "page": frame.page} for frame in state.frames],
+        "resident_pages": [{"page": entry.page, "frame_id": entry.frame_id} for entry in state.resident_pages],
         "metrics": metrics_payload(state.metrics),
         "policy_state": {
             "name": policy.name,
@@ -38,7 +37,9 @@ def simulation_payload(result):
         "policy": result.policy, "workload": [access.input_value for access in result.accesses],
         "initial_state": snapshot_payload(result.initial_state),
         "events": [{
-            "step": event.step, **asdict(event.access), "result": event.result,
+            "step": event.step, "input_value": event.access.input_value,
+            "virtual_address": event.access.virtual_address, "page": event.access.page,
+            "offset": event.access.offset, "result": event.result,
             "frame_id": event.frame_id, "physical_address": event.physical_address,
             "victim_page": event.victim_page, "reason": event.reason,
             "state": snapshot_payload(event.state),

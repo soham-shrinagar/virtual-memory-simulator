@@ -2,7 +2,7 @@
 
 A Linux-first university OS project with a **Python simulation engine/backend** and a **React + JavaScript interface**. React components use JSX. It is an educational model, not a replacement for the host operating system's memory manager.
 
-**Current milestone: Phase 6.** The required simulator and comparison features are implemented. Fresh Linux/Windows package installations, local assets, offline server operation, launch errors, and maximum-workload benchmarks have been checked. Native desktop browser acceptance remains a separate manual check; see verification scope below.
+**Current milestone: Phase 7 (stability buffer).** The required simulator and comparison features are implemented. Final fixes cover JSON saving, strict duplicate-key imports, playback readiness, and faster comparison/trace serialization. Fresh Linux/Windows package installations, local assets, offline server operation, launch errors, and maximum-workload benchmarks have been checked. Native desktop browser acceptance remains a separate manual check; see verification scope below.
 
 Use the engine independently of the web server:
 
@@ -33,7 +33,7 @@ The page table scrolls within its panel for large address spaces. Reference hist
 
 Select **Compare**, choose an inclusive frame range (1–32), then **Compare**. Each FIFO/LRU/Optimal run starts empty. The table and SVG chart show returned fault counts; a FIFO increase is called out as Belady's anomaly. **Belady preset** loads the classic workload and the 3–4 frame sweep (FIFO: 9 then 10 faults). Editing settings or the sweep clears obsolete results. Changing views pauses playback.
 
-**Export CSV** saves every comparison row with raw counts and unrounded fractional rates. **Save JSON** validates and downloads the current experiment; **Load JSON** validates a file up to 128 KiB and restores configuration, input mode, policy, and references. Run again to reproduce its trace. Invalid files preserve the editor. CSV contains results; JSON contains reproducible inputs, rather than playback position or comparison range.
+**Export CSV** saves every comparison row with raw counts and unrounded fractional rates. **Save JSON** validates and downloads the current experiment; **Load JSON** validates a UTF-8 file up to 128 KiB and restores configuration, input mode, policy, and references. Run again to reproduce its trace. Invalid files and duplicate JSON keys are rejected without changing the editor. CSV contains results; JSON contains reproducible inputs, rather than playback position or comparison range.
 
 ## Simulation API
 
@@ -168,7 +168,7 @@ This checks archive contents, installs the pinned requirements and each distribu
 
 ## Verification scope and model limits
 
-Recorded on 30 October 2026: Ubuntu 24.04.3 x86-64 under WSL2 (kernel 5.15.167.4, Python 3.12.3) and Windows 11 (Python 3.13.1); Node 22.23.2 for builds. Both platforms passed 95 Python tests, 42 JavaScript tests, production builds, and fresh wheel/source installations. Linux shutdown with SIGINT exits cleanly. Chromium 156.0.8078.4 rendered the application under WSLg. The full Firefox/Chromium desktop demo has not yet been completed on an independent Linux desktop/VM; do not treat WSL API/build tests as that check.
+Recorded on 30 October 2026: Ubuntu 24.04.3 x86-64 under WSL2 (kernel 5.15.167.4, Python 3.12.3) and Windows 11 (Python 3.13.1); Node 22.23.2 for builds. Both platforms passed 101 Python tests, 46 JavaScript tests, production builds, and fresh wheel/source installations. Linux shutdown with SIGINT exits cleanly. Browser checks verified real JSON/CSV downloads, restored address-mode settings, replay, and Belady's anomaly. Chromium 156.0.8078.4 rendered the application under WSLg. The full Firefox/Chromium desktop demo has not yet been completed on an independent Linux desktop/VM; do not treat WSL API/build tests as that check.
 
 Measure the bounded workload on your demo machine, with the server running:
 
@@ -176,7 +176,7 @@ Measure the bounded workload on your demo machine, with the server running:
 .venv/bin/python tools/benchmark.py --url http://127.0.0.1:8000
 ```
 
-The script uses 1,000 references, 256 virtual pages, 32 frames, and a sweep of all 96 policy/frame pairs. It reports five warmed repetitions with median and maximum times, separating engine/JSON work from HTTP. Initial WSL runs varied with machine load: HTTP Optimal medians 0.65–1.43 seconds; full comparison medians 1.31–2.22 seconds (maximum 3.14 seconds). The provisional 1-second trace / 3-second sweep targets are not guaranteed under contention. Browser rendering/control latency is excluded from these measurements.
+The script uses 1,000 references, 256 virtual pages, 32 frames, and a sweep of all 96 policy/frame pairs. It reports five warmed repetitions with median and maximum times, separating engine/JSON work from HTTP. After removing repeated workload validation and generic dataclass serialization, the final WSL run measured HTTP Optimal median **0.38 seconds** (max 0.56) and full comparison median **1.20 seconds** (max 1.33). Engine + JSON medians were 0.31/0.37/0.23 seconds for FIFO/LRU/Optimal; summary sweep median was 0.76 seconds. These are reference-machine measurements, not guarantees under contention. Browser rendering/control latency is excluded.
 
 The model uses one process, a flat page table, and successful abstract page loads. It does not manipulate Linux memory, access swap, emulate dirty writeback/permissions/multilevel paging, or measure hardware timing. LRU is exact simulated recency; Optimal uses future knowledge. TLB, CLOCK, synthetic generators, and effective-access-time formulas are outside the required release.
 

@@ -49,7 +49,7 @@ export default function App() {
     playback.reset();
     dispatch({ type: 'LOAD', draft });
   };
-  const save = () => fileRequest.run((signal) => exportExperiment({ schema_version: 1, ...buildRequest(simulation.draft) }, signal),
+  const save = () => fileRequest.run((signal) => exportExperiment(buildRequest(simulation.draft), signal),
     (experiment) => downloadFile('experiment.json', JSON.stringify(experiment, null, 2) + '\n', 'application/json'));
   const open = (event) => {
     const file = event.target.files[0];
@@ -58,11 +58,11 @@ export default function App() {
     playback.pause();
     fileRequest.run(async (signal) => {
       if (file.size > 131072) throw new Error('Experiment files must be at most 128 KiB.');
-      let data;
-      try { data = JSON.parse(await file.text()); }
+      let text;
+      try { text = await file.text(); }
       catch { throw new Error('Choose a valid JSON experiment file.'); }
       if (signal.aborted) throw new Error('Import canceled.');
-      return importExperiment(data, signal);
+      return importExperiment(text, signal);
     }, (experiment) => loadDraft(experimentDraft(experiment)));
   };
 

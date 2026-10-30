@@ -63,6 +63,11 @@ def simulate(
     policy: str = "fifo", *, capture_trace: bool = True,
 ) -> SimulationResult:
     accesses = normalize_and_validate(config, workload, input_mode)
+    return _simulate_validated(config, accesses, input_mode, policy, capture_trace=capture_trace)
+
+
+def _simulate_validated(config, accesses, input_mode, policy, *, capture_trace):
+    """Internal runner for immutable accesses already checked against this address space."""
     selection = create_policy(policy, accesses)
     memory = Memory(config)
     initial = memory.snapshot(selection.snapshot(memory.frames))

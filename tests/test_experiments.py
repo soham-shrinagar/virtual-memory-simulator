@@ -48,6 +48,16 @@ def test_comparison_is_fresh_and_matches_standalone():
     assert compare(config, pages, frame_counts=[3, 4]) == rows
 
 
+@pytest.mark.parametrize('page_size', [256, 4096, 65536])
+def test_address_sweeps_match_full_traces_with_offsets_and_excess_frames(page_size):
+    config = MemoryConfig(page_size=page_size, virtual_pages=5)
+    addresses = [0, page_size + 17, page_size - 1, page_size * 4 + 5, page_size + 2]
+    for row in compare(config, addresses, 'addresses', frame_counts=[1, 3, 32]):
+        trace = simulate(replace(config, physical_frames=row.physical_frames), addresses, 'addresses', row.policy)
+        assert row.metrics == trace.metrics
+        assert [event.access.offset for event in trace.events] == [0, 17, page_size - 1, 5, 2]
+
+
 @pytest.mark.parametrize("options", [
     {"policies": []}, {"policies": ["fifo", "fifo"]}, {"policies": ["other"]},
     {"frame_counts": []}, {"frame_counts": [1, 1]}, {"frame_counts": [True]},

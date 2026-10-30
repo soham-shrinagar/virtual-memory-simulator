@@ -45,7 +45,7 @@ def main():
             # tool is used: the source archive must contain the staged local assets.
             requirements = 'requirements-dev.txt' if name == 'source' else 'requirements.txt'
             run('-m', 'pip', 'install', '-r', root / requirements)
-            run('-m', 'pip', 'install', '--no-deps', '--no-build-isolation', archive)
+            run('-m', 'pip', 'install', '--no-cache-dir', '--no-deps', '--no-build-isolation', archive)
             run(root / 'tools/smoke_release.py')
             print(f'PASS: fresh {name} installation outside repository, no Node runtime', flush=True)
     return 0

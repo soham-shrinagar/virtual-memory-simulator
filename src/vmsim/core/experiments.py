@@ -3,7 +3,7 @@
 from dataclasses import asdict, dataclass, replace
 import json
 
-from vmsim.core.engine import simulate
+from vmsim.core.engine import _simulate_validated
 from vmsim.core.models import MemoryConfig, Metrics
 from vmsim.core.policies import POLICIES
 from vmsim.core.translation import normalize_and_validate
@@ -90,8 +90,9 @@ def compare(config, workload, input_mode="pages", policies=POLICIES, frame_count
         require_int(count, "frame_counts", 1, 32)
     if len(set(counts)) != len(counts):
         raise ValidationError("Frame counts must be unique.", "frame_counts")
-    addresses = tuple(access.virtual_address for access in accesses)
+    # Only frame count changes, so the same validated immutable accesses apply
+    # to every fresh run. Preserve their original mode and offsets.
     return tuple(
-        ComparisonRow(policy, count, simulate(replace(config, physical_frames=count), addresses, "addresses", policy, capture_trace=False).metrics)
+        ComparisonRow(policy, count, _simulate_validated(replace(config, physical_frames=count), accesses, input_mode, policy, capture_trace=False).metrics)
         for count in counts for policy in policies
     )

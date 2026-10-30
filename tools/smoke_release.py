@@ -101,6 +101,14 @@ runpy.run_module('vmsim', run_name='__main__')
             assert [row["metrics"]["faults"] for row in comparison["rows"]] == [9, 10]
             experiment = post("/api/experiments/export", {"workload": "4096,8300,4097", "input_mode": "addresses"})
             assert post("/api/experiments/import", experiment) == experiment
+            duplicate = '{"policy":"lru",' + json.dumps(experiment)[1:]
+            try:
+                urlopen(Request(base + '/api/experiments/import', data=duplicate.encode(),
+                                headers={'Content-Type': 'application/json'}), timeout=5)
+            except HTTPError as error:
+                assert error.code == 422 and 'Duplicate JSON key' in error.read().decode()
+            else:
+                raise AssertionError('Import accepted duplicate JSON keys')
             try:
                 urlopen(base + "/api/unknown", timeout=5)
             except HTTPError as error:

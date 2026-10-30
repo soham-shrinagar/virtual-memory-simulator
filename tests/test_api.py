@@ -89,6 +89,26 @@ def test_compare_api_belady_and_invalid_options(client):
         assert client.post("/api/compare", json={**body, **bad}).status_code == 422
 
 
+@pytest.mark.parametrize('duplicate', ['"policy":"lru",', '"po\\u006cicy":"lru",'])
+def test_import_rejects_duplicate_keys_in_original_json(client, duplicate):
+    payload = client.post('/api/experiments/export', json={'workload': [0, 1]}).text
+    text = '{' + duplicate + payload[1:]
+    result = client.post('/api/experiments/import', content=text, headers={'Content-Type': 'application/json'})
+    assert result.status_code == 422
+    assert 'Duplicate JSON key: policy' in result.json()['errors'][0]['message']
+
+
+def test_import_supports_utf8_bom_and_reproduces_address_offsets(client):
+    experiment = client.post('/api/experiments/export', json={'workload': '0x1000,8300,4097', 'input_mode': 'addresses', 'policy': 'lru'}).json()
+    restored = client.post('/api/experiments/import', content=b'\xef\xbb\xbf' + json.dumps(experiment).encode(), headers={'Content-Type': 'application/json'})
+    assert restored.status_code == 200
+    payload = restored.json()
+    del payload['schema_version']
+    trace = client.post('/api/simulate', json=payload).json()
+    assert trace['events'][1]['physical_address'] == 4204
+    assert trace['metrics']['faults'] == 2
+
+
 def contract_payloads(client):
     request = {"config": {"page_size": 4096, "virtual_pages": 8, "physical_frames": 2},
                "workload": [0, 4097, 0, 8194], "input_mode": "addresses"}

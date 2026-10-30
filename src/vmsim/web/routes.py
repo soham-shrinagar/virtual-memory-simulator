@@ -1,13 +1,12 @@
 """Stateless simulation/experiment HTTP endpoints."""
 
-import json
-
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
 from vmsim.core.engine import simulate
 from vmsim.core.experiments import compare, experiment_payload, load_experiment, make_experiment
 from vmsim.core.models import MemoryConfig
+from vmsim.core.validation import ValidationError
 from vmsim.web.schemas import CompareRequest, ComparisonResponse, ExperimentRequest, SimulationRequest, SimulationResponse
 from vmsim.web.serialization import config_payload, metrics_payload, simulation_payload
 
@@ -41,5 +40,11 @@ def export_experiment(request: SimulationRequest):
 
 
 @router.post("/experiments/import")
-def import_experiment(request: ExperimentRequest):
-    return experiment_payload(load_experiment(json.dumps(request.model_dump())))
+async def import_experiment(payload: ExperimentRequest, request: Request):
+    # Keep the declared schema, but validate original text so duplicate keys
+    # (including escaped spellings) cannot disappear during JSON decoding.
+    try:
+        text = (await request.body()).decode('utf-8-sig')
+    except UnicodeDecodeError:
+        raise ValidationError('Experiment files must use UTF-8.', 'experiment') from None
+    return experiment_payload(load_experiment(text))

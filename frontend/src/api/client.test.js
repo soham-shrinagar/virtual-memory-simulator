@@ -63,6 +63,13 @@ describe('Python / JavaScript contract', () => {
     expect(fetch.mock.calls.map(([url]) => url)).toEqual(['/api/experiments/export', '/api/experiments/import']);
   });
 
+  it('sends original JSON file text so the server can reject duplicate keys', async () => {
+    respond(contracts.experiment);
+    const text = '{"policy":"lru","policy":"fifo"}';
+    await importExperiment(text);
+    expect(fetch.mock.calls[0][1].body).toBe(text);
+  });
+
   it('exposes field and reference information for validation failures', async () => {
     const errors = [{ field: 'workload', message: 'Out of range.', token_index: 3 }];
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 422, json: async () => ({ errors }) }));

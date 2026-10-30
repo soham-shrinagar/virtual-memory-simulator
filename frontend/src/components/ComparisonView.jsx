@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useLayoutEffect, useState } from 'react';
 import { compareAlgorithms } from '../api/client.js';
 import useRequest from '../hooks/useRequest.js';
 import { buildRequest } from '../state/simulation.js';
@@ -36,9 +36,11 @@ export default function ComparisonView({ draft, onBelady }) {
   const [result, setResult] = useState(null);
   const request = useRequest();
   const reset = request.reset;
-  useEffect(() => { reset(); setResult(null); }, [draft, from, to, reset]);
+  useLayoutEffect(() => { reset(); setResult(null); }, [draft, from, to, reset]);
   const compare = (event) => {
     event.preventDefault();
+    if (request.busy) return;
+    setResult(null);
     request.run(async (signal) => {
       const { policy, ...payload } = buildRequest(draft);
       const start = Number(from), end = Number(to);
@@ -60,7 +62,7 @@ export default function ComparisonView({ draft, onBelady }) {
     {result && <>
       <FaultChart result={result} />
       {anomalies.length > 0 && <p role="status" className="anomaly-note">Belady’s anomaly observed in FIFO: {anomalies.join('; ')}.</p>}
-      <div className="table-scroll"><table aria-label="Comparison results"><thead><tr><th>Policy</th><th>Frames</th><th>Hits</th><th>Faults</th><th>Replacements</th><th>Fault rate</th></tr></thead><tbody>
+      <div className="table-scroll" tabIndex="0" role="region" aria-label="Scrollable comparison results"><table aria-label="Comparison results"><thead><tr><th scope="col">Policy</th><th scope="col">Frames</th><th scope="col">Hits</th><th scope="col">Faults</th><th scope="col">Replacements</th><th scope="col">Fault rate</th></tr></thead><tbody>
         {result.rows.map((row) => <tr key={`${row.policy}-${row.physical_frames}`}><td>{names[row.policy]}</td><td>{row.physical_frames}</td><td>{row.metrics.hits}</td><td>{row.metrics.faults}</td><td>{row.metrics.replacements}</td><td>{(row.metrics.fault_rate * 100).toFixed(2)}%</td></tr>)}
       </tbody></table></div>
       <button className="button csv-button" onClick={() => downloadFile('comparison.csv', comparisonCsv(result), 'text/csv;charset=utf-8')}>Export CSV</button>

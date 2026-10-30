@@ -30,10 +30,10 @@ export class ApiError extends Error {
   }
 }
 
-async function postJson(path, body, signal) {
+async function postJson(path, body, signal, raw = false) {
   const response = await fetch(path, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body), signal,
+    body: raw ? body : JSON.stringify(body), signal,
   });
   const data = await response.json();
   if (!response.ok) {
@@ -161,6 +161,6 @@ export async function exportExperiment(request, signal) {
 }
 
 export async function importExperiment(request, signal) {
-  return validateExperiment(await postJson('/api/experiments/import', request, signal));
+  return validateExperiment(await postJson('/api/experiments/import', request, signal, typeof request === 'string'));
 }
 
