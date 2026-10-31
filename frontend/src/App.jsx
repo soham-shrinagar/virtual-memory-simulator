@@ -19,28 +19,15 @@ export default function App() {
   const fileRequest = useRequest();
   const fileInput = useRef(null);
 
-  const edit = (field, value) => {
+  const updateExperiment = (action) => {
     fileRequest.reset();
     simulationRequest.reset();
-    dispatch({ type: 'EDIT', field, value });
+    dispatch(action);
   };
 
-  const loadExample = () => {
-    fileRequest.reset();
-    simulationRequest.reset();
-    dispatch({ type: 'EXAMPLE' });
-  };
-
-  const loadDraft = (draft) => {
-    simulationRequest.reset();
-    dispatch({ type: 'LOAD', draft });
-  };
-
-  const loadBelady = () => {
-    fileRequest.reset();
-    simulationRequest.reset();
-    dispatch({ type: 'BELADY' });
-  };
+  const edit = (field, value) => updateExperiment({ type: 'EDIT', field, value });
+  const loadExample = () => updateExperiment({ type: 'EXAMPLE' });
+  const loadBelady = () => updateExperiment({ type: 'BELADY' });
 
   const save = () => fileRequest.run((signal) => exportExperiment(buildRequest(simulation.draft), signal),
     (experiment) => downloadFile('experiment.json', JSON.stringify(experiment, null, 2) + '\n', 'application/json'));
@@ -56,7 +43,7 @@ export default function App() {
       catch { throw new Error('Unable to read the experiment file.'); }
       if (signal.aborted) throw new Error('Import canceled.');
       return importExperiment(text, signal);
-    }, (experiment) => loadDraft(experimentDraft(experiment)));
+    }, (experiment) => updateExperiment({ type: 'LOAD', draft: experimentDraft(experiment) }));
   };
 
   const cancel = () => {
@@ -143,17 +130,17 @@ export default function App() {
         {fileRequest.error && <p className="form-error" role="alert">{fileRequest.error}</p>}
         <div className="simulator-layout">
           <div className="simulation-setup">
-          <ConfigurationForm
-            draft={simulation.draft}
-            busy={simulationRequest.busy}
-            error={simulationRequest.error}
-            onEdit={edit}
-            onExample={loadExample}
-            onRun={run}
-            onCancel={cancel}
-            showRun={view === 'simulator'}
-          />
-          <WorkloadGenerator draft={simulation.draft} onGenerated={(workload) => edit('workload', workload)} />
+            <ConfigurationForm
+              draft={simulation.draft}
+              busy={simulationRequest.busy}
+              error={simulationRequest.error}
+              onEdit={edit}
+              onExample={loadExample}
+              onRun={run}
+              onCancel={cancel}
+              showRun={view === 'simulator'}
+            />
+            <WorkloadGenerator draft={simulation.draft} onGenerated={(workload) => edit('workload', workload)} />
           </div>
           {view === 'simulator'
             ? <SimulationView trace={simulation.trace} busy={simulationRequest.busy} playback={playback} />

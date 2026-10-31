@@ -55,7 +55,7 @@ class CompareRequest(StrictModel):
     workload: str | list[StrictInt]
     input_mode: Literal["pages", "addresses"] = "pages"
     tlb_capacity: int = Field(default=0, ge=0, le=32)
-    policies: list[PolicyName] = Field(default_factory=lambda: list(POLICIES), min_length=1, max_length=4)
+    policies: list[PolicyName] = Field(default_factory=lambda: list(POLICIES), min_length=1, max_length=len(POLICIES))
     frame_counts: list[StrictInt] | None = Field(default=None, min_length=1, max_length=32)
 
 

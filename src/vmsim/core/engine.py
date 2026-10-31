@@ -95,7 +95,8 @@ def _simulate_validated(config, accesses, input_mode, policy, *, capture_trace, 
         selection.on_access(frame, access.page, index)
         memory.check_invariants()
         if tlb:
-            tlb.fill(access.page, frame)
+            if cached_frame is None:
+                tlb.fill(access.page, frame)
             tlb.check_invariants(memory)
         if capture_trace:
             if hit:

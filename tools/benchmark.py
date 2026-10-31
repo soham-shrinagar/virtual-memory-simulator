@@ -23,6 +23,8 @@ def main():
     if not 1 <= args.repeats <= 20:
         parser.error('--repeats must be from 1 to 20')
     config = MemoryConfig(virtual_pages=256, physical_frames=32)
+    frame_counts = list(range(1, 33))
+    run_count = len(POLICIES) * len(frame_counts)
     # Deterministic mix of locality and churn; all 256 virtual pages are reachable.
     workload = [(index * 17 + index // 8) % 256 for index in range(1000)]
     def measure(label, task):
@@ -36,8 +38,8 @@ def main():
     results = [measure(f'{policy}: engine + JSON, 1000 references / 32 frames',
                        lambda policy=policy: json.dumps(simulation_payload(simulate(config, workload, policy=policy, tlb_capacity=args.tlb_capacity)), allow_nan=False))
                for policy in POLICIES]
-    results.append(measure('engine: 4 policies × frames 1–32 × 1000 references',
-                           lambda: compare(config, workload, frame_counts=list(range(1, 33)), tlb_capacity=args.tlb_capacity)))
+    results.append(measure(f'engine: {len(POLICIES)} policies × frames 1–32 × 1000 references',
+                           lambda: compare(config, workload, frame_counts=frame_counts, tlb_capacity=args.tlb_capacity)))
     if args.url:
         def post(path, payload):
             request = Request(args.url.rstrip('/') + path, json.dumps(payload).encode(), {'Content-Type': 'application/json'})
@@ -45,7 +47,7 @@ def main():
                 return json.load(response)
         base = {'config': {'page_size': 4096, 'virtual_pages': 256, 'physical_frames': 32}, 'workload': workload, 'tlb_capacity': args.tlb_capacity}
         results.append(measure('HTTP simulate Optimal: compute, validation, serialization, transfer', lambda: post('/api/simulate', {**base, 'policy': 'optimal'})))
-        results.append(measure('HTTP compare: 128 fresh runs', lambda: post('/api/compare', {**base, 'frame_counts': list(range(1, 33))})))
+        results.append(measure(f'HTTP compare: {run_count} fresh runs', lambda: post('/api/compare', {**base, 'frame_counts': frame_counts})))
     print(json.dumps({'platform': platform.platform(), 'python': platform.python_version(), 'tlb_capacity': args.tlb_capacity, 'repeats': args.repeats, 'measurements': results}, indent=2))
     return 0
 

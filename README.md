@@ -31,7 +31,7 @@ The page table scrolls within its panel for large address spaces. Reference hist
 
 ## Comparison and files
 
-Select **Compare**, choose an inclusive frame range (1–32), then **Compare**. Each FIFO/LRU/Optimal run starts empty. The table and SVG chart show returned fault counts; a FIFO increase is called out as Belady's anomaly. **Belady preset** loads the classic workload and the 3–4 frame sweep (FIFO: 9 then 10 faults). Editing settings or the sweep clears obsolete results. Changing views pauses playback.
+Select **Compare**, choose an inclusive frame range (1–32), then **Compare**. Each FIFO/LRU/Optimal/CLOCK run starts empty. The table and SVG chart show returned fault counts; a FIFO increase is called out as Belady's anomaly. **Belady preset** loads the classic workload and the 3–4 frame sweep (FIFO: 9 then 10 faults). Editing settings or the sweep clears obsolete results. Changing views pauses playback.
 
 **Export CSV** saves every comparison row with raw counts and unrounded fractional rates. **Save JSON** validates and downloads the current experiment; **Load JSON** validates a UTF-8 file up to 128 KiB and restores configuration, input mode, policy, and references. Run again to reproduce its trace. Invalid files and duplicate JSON keys are rejected without changing the editor. CSV contains results; JSON contains reproducible inputs, rather than playback position or comparison range.
 
@@ -70,6 +70,7 @@ Run the local server, then send JSON to these routes:
 | `GET /api/health` | Application version and frontend readiness |
 | `POST /api/simulate` | Full initial state, immutable events, and final metrics |
 | `POST /api/compare` | Fresh summary runs for each policy/frame-count pair |
+| `POST /api/workloads/generate` | Reproducible uniform, sequential, or locality references |
 | `POST /api/experiments/export` | Download a canonical schema-version-2 experiment |
 | `POST /api/experiments/import` | Validate and normalize a complete versioned experiment |
 
@@ -84,13 +85,13 @@ Example simulation request:
 }
 ```
 
-For comparison, replace `policy` with `policies: ["fifo", "lru", "optimal"]` and optionally add `frame_counts: [3, 4]`. Default configuration is 4096-byte pages, 8 virtual pages, and 3 frames. Comparison defaults to all four policies and the configured frame count. Each pair starts empty; summary runs do not retain detailed event histories.
+For comparison, replace `policy` with `policies: ["fifo", "lru", "optimal", "clock"]` and optionally add `frame_counts: [3, 4]`. Default configuration is 4096-byte pages, 8 virtual pages, and 3 frames. Comparison defaults to all four policies and the configured frame count. Each pair starts empty; summary runs do not retain detailed event histories.
 
 Workload may be text or an integer array. Limits: 1–1000 references; 1–256 virtual pages; 1–32 frames; power-of-two page sizes from 256 to 65536 bytes; at most 32 distinct frame counts. Request bodies are limited to 128 KiB, including requests without Content-Length. Invalid fields/references return HTTP 422 with `errors` containing `field`, `message`, and optional one-based `token_index`; oversized requests return 413. Unknown fields and numeric coercion are rejected. Empty comma-separated references are invalid.
 
 Response schema version is 1. Config responses include byte capacities and offset bits. Each event contains the input value, split address, hit/fault result, resolved physical address, optional victim, reason, frame state, policy metadata, and cumulative metrics. Snapshot `resident_pages` lists only resident mappings; all other virtual pages are nonresident. FIFO/LRU `order` lists frame IDs from oldest to newest; LRU `last_access` and Optimal `next_use` use one-based access steps. A null Optimal next use means never used again. Zero-reference rates in the initial state are null.
 
-The JavaScript client in `frontend/src/api/client.js` provides `simulateExperiment`, `compareAlgorithms`, `exportExperiment`, and `importExperiment`, with an optional AbortSignal. It validates response structure and consistency and exposes structured HTTP failures as `ApiError`. Python API tests keep shared JSON fixtures synchronized with the JavaScript contract tests.
+The JavaScript client in `frontend/src/api/client.js` provides `getHealth`, `simulateExperiment`, `compareAlgorithms`, `generateWorkload`, `exportExperiment`, and `importExperiment`, with an optional AbortSignal. It validates response structure and consistency and exposes structured HTTP failures as `ApiError`. Python API tests keep shared JSON fixtures synchronized with the JavaScript contract tests.
 
 Example files in `examples/` cover FIFO, Belady's anomaly, address offsets, TLB caching, and CLOCK. To run a saved experiment without HTTP:
 
@@ -98,8 +99,11 @@ Example files in `examples/` cover FIFO, Belady's anomaly, address offsets, TLB 
 from pathlib import Path
 from vmsim.core.experiments import load_experiment
 
-experiment = load_experiment(Path("examples/translation.json").read_text())
-result = simulate(experiment.config, experiment.workload, experiment.input_mode, experiment.policy)
+experiment = load_experiment(Path("examples/translation.json").read_text(encoding="utf-8"))
+result = simulate(
+    experiment.config, experiment.workload, experiment.input_mode, experiment.policy,
+    tlb_capacity=experiment.tlb_capacity,
+)
 ```
 
 `dump_experiment` serializes validated experiments for repeatable JSON round-trips. Experiment files require schema_version, all three config values, workload, input_mode, and policy; version 2 additionally requires tlb_capacity. CLOCK experiments use version 2. Import validation does not execute a simulation.

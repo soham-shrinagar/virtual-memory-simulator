@@ -18,7 +18,9 @@ def generate_workload(config: MemoryConfig, seed=42, length=100, profile='locali
     # random() has a stable seeded sequence. Avoid global RNG state and give
     # offsets their own stream so both modes use the same page-reference sequence.
     rng = Random(seed)
-    choose = lambda bound: int(rng.random() * bound)
+    def choose(bound):
+        return int(rng.random() * bound)
+
     start = choose(config.virtual_pages)
     hot_size = min(4, config.virtual_pages)
     pages = []
