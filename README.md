@@ -35,6 +35,18 @@ Select **Compare**, choose an inclusive frame range (1–32), then **Compare**. 
 
 **Export CSV** saves every comparison row with raw counts and unrounded fractional rates. **Save JSON** validates and downloads the current experiment; **Load JSON** validates a UTF-8 file up to 128 KiB and restores configuration, input mode, policy, and references. Run again to reproduce its trace. Invalid files and duplicate JSON keys are rejected without changing the editor. CSV contains results; JSON contains reproducible inputs, rather than playback position or comparison range.
 
+## Seeded workloads
+
+Expand **Generate references**, choose a seed (0–4294967295), count (1–1000), and profile, then select **Generate workload**. This replaces the editor and clears its previous trace. It uses the configured virtual pages and input mode; addresses preserve the same generated page sequence with independently seeded byte offsets.
+
+- **Uniform:** independent draws across the virtual page range.
+- **Sequential:** cycle through pages from a seeded starting point, wrapping at the end.
+- **Locality:** 80% of draws favor a contiguous hot set of up to four pages, relocated every 32 references; the rest draw from the whole range.
+
+The recipes use private seeded RNG streams, with no global or time-based state. The same seed and settings reproduce the same references on the tested Python versions. JSON exports store the resulting list, so replay does not depend on rerunning a generator. These are synthetic teaching workloads, not samples of real Linux memory traffic.
+
+`POST /api/workloads/generate` accepts `config`, `seed`, `length`, `profile`, and `input_mode`, and returns the normalized recipe and workload.
+
 ## Translation cache (TLB)
 
 Set **Translation cache (TLB)** to 1–32 entries, or leave it **Disabled**. This is a fully associative simulated cache with fixed LRU replacement, separate from the page-replacement policy. Playback shows cached page/frame mappings from least to most recent and the selected step's TLB hits/misses. A TLB miss can still be a page hit; only a nonresident page faults. Memory evictions invalidate cached mappings before a frame is reused. Hits through the TLB still update memory-policy recency.
@@ -176,7 +188,7 @@ This checks archive contents, installs the pinned requirements and each distribu
 
 ## Verification scope and model limits
 
-Recorded on 30 October 2026: Ubuntu 24.04.3 x86-64 under WSL2 (kernel 5.15.167.4, Python 3.12.3) and Windows 11 (Python 3.13.1); Node 22.23.2 for builds. Both platforms passed 115 Python tests, 48 JavaScript tests, production builds, and fresh wheel/source installations. Linux shutdown with SIGINT exits cleanly. Browser checks verified real JSON/CSV downloads, restored address-mode settings, replay, and Belady's anomaly. Chromium 156.0.8078.4 rendered the application under WSLg. The full Firefox/Chromium desktop demo has not yet been completed on an independent Linux desktop/VM; do not treat WSL API/build tests as that check.
+Recorded on 30 October 2026: Ubuntu 24.04.3 x86-64 under WSL2 (kernel 5.15.167.4, Python 3.12.3) and Windows 11 (Python 3.13.1); Node 22.23.2 for builds. Both platforms passed 134 Python tests, 50 JavaScript tests, production builds, and fresh wheel/source installations. Linux shutdown with SIGINT exits cleanly. Browser checks verified real JSON/CSV downloads, restored address-mode settings, replay, and Belady's anomaly. Chromium 156.0.8078.4 rendered the application under WSLg. The full Firefox/Chromium desktop demo has not yet been completed on an independent Linux desktop/VM; do not treat WSL API/build tests as that check.
 
 Measure the bounded workload on your demo machine, with the server running:
 

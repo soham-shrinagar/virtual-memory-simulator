@@ -27,21 +27,29 @@ export function simulationReducer(state, action) {
   }
 }
 
-export function buildRequest(draft) {
-  const integer = (value, name, min, max) => {
-    if (!/^\d+$/.test(value) || !Number.isSafeInteger(Number(value)) || Number(value) < min || Number(value) > max) {
-      throw new Error(`${name} must be an integer from ${min} to ${max}.`);
-    }
-    return Number(value);
-  };
-  const pageSize = integer(draft.pageSize, 'Page size', 256, 65536);
+export function parseInteger(value, name, min, max) {
+  if (!/^\d+$/.test(value) || !Number.isSafeInteger(Number(value)) || Number(value) < min || Number(value) > max) {
+    throw new Error(`${name} must be an integer from ${min} to ${max}.`);
+  }
+  return Number(value);
+}
+
+export function buildMemoryConfig(draft) {
+  const pageSize = parseInteger(draft.pageSize, 'Page size', 256, 65536);
   if ((pageSize & (pageSize - 1)) !== 0) throw new Error('Page size must be a power of two.');
-  const virtualPages = integer(draft.virtualPages, 'Virtual pages', 1, 256);
-  const physicalFrames = integer(draft.physicalFrames, 'Physical frames', 1, 32);
-  const tlbCapacity = integer(draft.tlbCapacity, 'TLB capacity', 0, 32);
+  return {
+    page_size: pageSize,
+    virtual_pages: parseInteger(draft.virtualPages, 'Virtual pages', 1, 256),
+    physical_frames: parseInteger(draft.physicalFrames, 'Physical frames', 1, 32),
+  };
+}
+
+export function buildRequest(draft) {
+  const config = buildMemoryConfig(draft);
+  const tlbCapacity = parseInteger(draft.tlbCapacity, 'TLB capacity', 0, 32);
   if (!draft.workload.trim()) throw new Error('Enter at least one memory reference.');
   return {
-    config: { page_size: pageSize, virtual_pages: virtualPages, physical_frames: physicalFrames },
+    config,
     workload: draft.workload, input_mode: draft.inputMode, policy: draft.policy,
     ...(tlbCapacity ? { tlb_capacity: tlbCapacity } : {}),
   };

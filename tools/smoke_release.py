@@ -102,6 +102,10 @@ runpy.run_module('vmsim', run_name='__main__')
             cached = post('/api/simulate', {'workload': [0, 1, 0], 'tlb_capacity': 2, 'policy': 'lru'})
             assert cached['tlb']['hits'] == 1 and cached['tlb']['misses'] == 2
             assert cached['metrics']['faults'] == 2 and cached['events'][2]['tlb_result'] == 'hit'
+            recipe = {'seed': 42, 'length': 5, 'profile': 'uniform'}
+            generated = post('/api/workloads/generate', recipe)
+            assert generated['workload'] == [0, 2, 1, 5, 5]
+            assert generated == post('/api/workloads/generate', recipe)
             experiment = post("/api/experiments/export", {"workload": "4096,8300,4097", "input_mode": "addresses"})
             assert post("/api/experiments/import", experiment) == experiment
             duplicate = '{"policy":"lru",' + json.dumps(experiment)[1:]

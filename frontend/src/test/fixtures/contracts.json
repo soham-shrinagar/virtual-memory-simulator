@@ -1365,5 +1365,27 @@
         }
       ]
     }
+  },
+  "generated_workload": {
+    "schema_version": 1,
+    "config": {
+      "page_size": 4096,
+      "virtual_pages": 8,
+      "physical_frames": 3,
+      "virtual_capacity": 32768,
+      "physical_capacity": 12288,
+      "offset_bits": 12
+    },
+    "seed": 42,
+    "length": 5,
+    "profile": "uniform",
+    "input_mode": "pages",
+    "workload": [
+      0,
+      2,
+      1,
+      5,
+      5
+    ]
   }
 }

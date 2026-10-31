@@ -7,10 +7,20 @@ from vmsim.core.engine import simulate
 from vmsim.core.experiments import compare, experiment_payload, load_experiment, make_experiment
 from vmsim.core.models import MemoryConfig
 from vmsim.core.validation import ValidationError
-from vmsim.web.schemas import CompareRequest, ComparisonResponse, ExperimentRequest, SimulationRequest, SimulationResponse
+from vmsim.core.workloads import generate_workload
+from vmsim.web.schemas import CompareRequest, ComparisonResponse, ExperimentRequest, SimulationRequest, SimulationResponse, WorkloadRequest
 from vmsim.web.serialization import config_payload, metrics_payload, simulation_payload, tlb_payload
 
 router = APIRouter(prefix="/api")
+
+
+@router.post('/workloads/generate')
+def generate_references(request: WorkloadRequest):
+    config = MemoryConfig(**request.config.model_dump())
+    workload = generate_workload(config, request.seed, request.length, request.profile, request.input_mode)
+    return {'schema_version': 1, 'config': config_payload(config), 'seed': request.seed,
+            'length': request.length, 'profile': request.profile, 'input_mode': request.input_mode,
+            'workload': list(workload)}
 
 
 @router.post("/simulate", response_model=SimulationResponse)

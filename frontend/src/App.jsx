@@ -3,6 +3,7 @@ import { exportExperiment, getHealth, importExperiment, simulateExperiment } fro
 import ComparisonView from './components/ComparisonView.jsx';
 import ConfigurationForm from './components/ConfigurationForm.jsx';
 import SimulationView from './components/SimulationView.jsx';
+import WorkloadGenerator from './components/WorkloadGenerator.jsx';
 import usePlayback from './hooks/usePlayback.js';
 import useRequest from './hooks/useRequest.js';
 import { downloadFile, experimentDraft } from './state/files.js';
@@ -141,6 +142,7 @@ export default function App() {
         </div>
         {fileRequest.error && <p className="form-error" role="alert">{fileRequest.error}</p>}
         <div className="simulator-layout">
+          <div className="simulation-setup">
           <ConfigurationForm
             draft={simulation.draft}
             busy={simulationRequest.busy}
@@ -151,6 +153,8 @@ export default function App() {
             onCancel={cancel}
             showRun={view === 'simulator'}
           />
+          <WorkloadGenerator draft={simulation.draft} onGenerated={(workload) => edit('workload', workload)} />
+          </div>
           {view === 'simulator'
             ? <SimulationView trace={simulation.trace} busy={simulationRequest.busy} playback={playback} />
             : <ComparisonView draft={simulation.draft} onBelady={loadBelady} />}

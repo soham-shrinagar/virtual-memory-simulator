@@ -181,3 +181,12 @@ export async function importExperiment(request, signal) {
   return validateExperiment(await postJson('/api/experiments/import', request, signal, typeof request === 'string'));
 }
 
+export async function generateWorkload(request, signal) {
+  const data = await postJson('/api/workloads/generate', request, signal);
+  requireContract(validWorkload(data) && data.schema_version === 1 && validDerivedConfig(data.config) &&
+    data.length === data.workload.length && data.length === request.length && data.seed === request.seed &&
+    data.profile === request.profile && data.input_mode === request.input_mode &&
+    ['page_size', 'virtual_pages', 'physical_frames'].every((key) => data.config[key] === request.config[key]), 'generated workload');
+  return data;
+}
+

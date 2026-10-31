@@ -56,6 +56,14 @@ class CompareRequest(StrictModel):
     frame_counts: list[StrictInt] | None = Field(default=None, min_length=1, max_length=32)
 
 
+class WorkloadRequest(StrictModel):
+    config: ConfigRequest = Field(default_factory=ConfigRequest)
+    seed: int = Field(default=42, ge=0, le=2**32 - 1)
+    length: int = Field(default=100, ge=1, le=1000)
+    profile: Literal['uniform', 'sequential', 'locality'] = 'locality'
+    input_mode: Literal['pages', 'addresses'] = 'pages'
+
+
 class ConfigResponse(ConfigRequest):
     virtual_capacity: int
     physical_capacity: int

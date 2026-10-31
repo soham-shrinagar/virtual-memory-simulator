@@ -117,6 +117,7 @@ def contract_payloads(client):
         "comparison": client.post("/api/compare", json={**request, "frame_counts": [1, 2]}).json(),
         "experiment": client.post("/api/experiments/export", json={**request, "policy": "fifo"}).json(),
         "tlb_simulation": client.post('/api/simulate', json={**request, 'policy': 'lru', 'tlb_capacity': 2}).json(),
+        "generated_workload": client.post('/api/workloads/generate', json={'seed': 42, 'length': 5, 'profile': 'uniform'}).json(),
     }
 
 
