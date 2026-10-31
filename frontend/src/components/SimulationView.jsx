@@ -73,6 +73,17 @@ function History({ trace, cursor, onSeek }) {
   </section>;
 }
 
+function TLBView({ tlb, event }) {
+  return <section className="panel detail-panel" aria-labelledby="tlb-title">
+    <div className="section-heading"><h2 id="tlb-title">Translation cache</h2><span className="small-note">{tlb ? `${tlb.capacity} entries · LRU` : 'Disabled'}</span></div>
+    {tlb ? <>
+      <p className="muted-note">{event ? `This reference: TLB ${event.tlb_result}.` : 'Initially empty.'} Cache hits: {tlb.hits} · misses: {tlb.misses} · hit rate: {tlb.hits + tlb.misses ? `${(100 * tlb.hits / (tlb.hits + tlb.misses)).toFixed(1)}%` : '—'}</p>
+      <p className="field-hint">Least → most recent. These counters are separate from page residency.</p>
+      {tlb.entries.length ? <ol className="policy-order">{tlb.entries.map((entry) => <li key={entry.page}><strong>P{entry.page}</strong><span>F{entry.frame_id}</span></li>)}</ol> : <p className="muted-note">No cached translations.</p>}
+    </> : <p className="muted-note">Each reference uses the page table directly.</p>}
+  </section>;
+}
+
 export default function SimulationView({ trace, busy, playback }) {
   if (!trace) return <section className="panel empty-workspace" aria-label="Simulation workspace" aria-busy={busy}>
     <span className="empty-symbol" aria-hidden="true">[ &nbsp; ]</span><h2>{busy ? 'Preparing your trace…' : 'Your memory workspace'}</h2><p>{busy ? 'Calculating each reference and memory decision.' : 'Choose a memory model, then run a simulation.'}</p><span className="small-note">FIFO / LRU / Optimal</span>
@@ -93,6 +104,7 @@ export default function SimulationView({ trace, busy, playback }) {
       <AddressBreakdown event={event} config={trace.config} />
     </section>
     <div className="detail-grid"><PageTable snapshot={snapshot} config={trace.config} event={event} /><PolicyState snapshot={snapshot} policy={trace.policy} /></div>
+    <TLBView tlb={snapshot.tlb} event={event} />
     <History trace={trace} cursor={cursor} onSeek={playback.seek} />
   </div>;
 }

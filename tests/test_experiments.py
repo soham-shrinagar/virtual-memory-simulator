@@ -20,7 +20,7 @@ def test_json_round_trip_preserves_addresses_policy_and_results():
 
 
 @pytest.mark.parametrize("change", [
-    {"schema_version": 2}, {"schema_version": True}, {"extra": 1},
+    {"schema_version": 3}, {"schema_version": True}, {"extra": 1},
     {"workload": [True]}, {"input_mode": "guess"}, {"policy": "random"},
     {"config": {"page_size": 4096}},
 ])

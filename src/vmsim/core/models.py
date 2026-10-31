@@ -83,11 +83,20 @@ class PolicyState:
 
 
 @dataclass(frozen=True, slots=True)
+class TLBState:
+    capacity: int
+    hits: int
+    misses: int
+    entries: tuple[PageTableEntry, ...] = ()  # Least to most recently used.
+
+
+@dataclass(frozen=True, slots=True)
 class Snapshot:
     step: int
     frames: tuple[Frame, ...]
     metrics: Metrics
     policy_state: PolicyState | None = None
+    tlb: TLBState | None = None
 
     @property
     def resident_pages(self) -> tuple[PageTableEntry, ...]:
@@ -107,6 +116,7 @@ class Event:
     victim_page: int | None
     reason: str
     state: Snapshot
+    tlb_result: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -118,3 +128,4 @@ class SimulationResult:
     initial_state: Snapshot
     events: tuple[Event, ...]
     metrics: Metrics
+    tlb: TLBState | None = None

@@ -28,6 +28,12 @@ export default function ConfigurationForm({ draft, busy, error, onEdit, onExampl
       <select id="policy" value={draft.policy} onChange={change('policy')}>
         <option value="fifo">FIFO · First in, first out</option><option value="lru">LRU · Least recently used</option><option value="optimal">Optimal · Offline benchmark</option>
       </select>
+      <label htmlFor="tlb-capacity">Translation cache (TLB)</label>
+      <select id="tlb-capacity" value={draft.tlbCapacity} onChange={change('tlbCapacity')}>
+        <option value="0">Disabled</option>
+        {Array.from({ length: 32 }, (_, index) => index + 1).map((capacity) => <option key={capacity} value={capacity}>{capacity} {capacity === 1 ? 'entry' : 'entries'} · LRU</option>)}
+      </select>
+      <p className="field-hint">A TLB miss can still be a page hit. Cache capacity is separate from physical frames.</p>
       <label htmlFor="input-mode">Reference type</label>
       <select id="input-mode" value={draft.inputMode} onChange={change('inputMode')}>
         <option value="pages">Page numbers</option><option value="addresses">Virtual byte addresses</option>

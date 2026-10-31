@@ -27,17 +27,20 @@ class SimulationRequest(StrictModel):
     workload: str | list[StrictInt]
     input_mode: Literal["pages", "addresses"] = "pages"
     policy: Literal["fifo", "lru", "optimal"] = "fifo"
+    tlb_capacity: int = Field(default=0, ge=0, le=32)
 
 
 class ExperimentRequest(SimulationRequest):
-    schema_version: int = Field(ge=1, le=1)
+    schema_version: int = Field(ge=1, le=2)
 
     @model_validator(mode="before")
     @classmethod
     def require_complete_file(cls, data):
         fields = {"schema_version", "config", "workload", "input_mode", "policy"}
+        if isinstance(data, dict) and data.get('schema_version') == 2:
+            fields.add('tlb_capacity')
         if not isinstance(data, dict) or set(data) != fields:
-            raise ValueError("An experiment file must include all five versioned fields.")
+            raise ValueError("An experiment file must include all fields for its schema version.")
         config = data.get("config")
         if not isinstance(config, dict) or set(config) != {"page_size", "virtual_pages", "physical_frames"}:
             raise ValueError("An experiment file must include all memory configuration fields.")
@@ -48,6 +51,7 @@ class CompareRequest(StrictModel):
     config: ConfigRequest = Field(default_factory=ConfigRequest)
     workload: str | list[StrictInt]
     input_mode: Literal["pages", "addresses"] = "pages"
+    tlb_capacity: int = Field(default=0, ge=0, le=32)
     policies: list[Literal["fifo", "lru", "optimal"]] = Field(default_factory=lambda: ["fifo", "lru", "optimal"], min_length=1, max_length=3)
     frame_counts: list[StrictInt] | None = Field(default=None, min_length=1, max_length=32)
 
@@ -89,12 +93,20 @@ class PolicyResponse(StrictModel):
     next_use: list[PolicyPosition]
 
 
+class TLBResponse(StrictModel):
+    capacity: int
+    hits: int
+    misses: int
+    entries: list[ResidentResponse]
+
+
 class SnapshotResponse(StrictModel):
     step: int
     frames: list[FrameResponse]
     resident_pages: list[ResidentResponse]
     metrics: MetricsResponse
     policy_state: PolicyResponse
+    tlb: TLBResponse | None
 
 
 class EventResponse(StrictModel):
@@ -109,6 +121,7 @@ class EventResponse(StrictModel):
     victim_page: int | None
     reason: str
     state: SnapshotResponse
+    tlb_result: Literal['hit', 'miss'] | None
 
 
 class SimulationResponse(StrictModel):
@@ -120,12 +133,15 @@ class SimulationResponse(StrictModel):
     initial_state: SnapshotResponse
     events: list[EventResponse]
     metrics: MetricsResponse
+    tlb_capacity: int
+    tlb: TLBResponse | None
 
 
 class ComparisonRowResponse(StrictModel):
     policy: Literal["fifo", "lru", "optimal"]
     physical_frames: int
     metrics: MetricsResponse
+    tlb: TLBResponse | None
 
 
 class ComparisonResponse(StrictModel):
@@ -136,4 +152,5 @@ class ComparisonResponse(StrictModel):
     policies: list[str]
     frame_counts: list[int]
     rows: list[ComparisonRowResponse]
+    tlb_capacity: int
 

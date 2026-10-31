@@ -44,7 +44,8 @@
           "order": [],
           "last_access": [],
           "next_use": []
-        }
+        },
+        "tlb": null
       },
       "events": [
         {
@@ -91,8 +92,10 @@
               ],
               "last_access": [],
               "next_use": []
-            }
-          }
+            },
+            "tlb": null
+          },
+          "tlb_result": null
         },
         {
           "step": 2,
@@ -143,8 +146,10 @@
               ],
               "last_access": [],
               "next_use": []
-            }
-          }
+            },
+            "tlb": null
+          },
+          "tlb_result": null
         },
         {
           "step": 3,
@@ -195,8 +200,10 @@
               ],
               "last_access": [],
               "next_use": []
-            }
-          }
+            },
+            "tlb": null
+          },
+          "tlb_result": null
         },
         {
           "step": 4,
@@ -247,8 +254,10 @@
               ],
               "last_access": [],
               "next_use": []
-            }
-          }
+            },
+            "tlb": null
+          },
+          "tlb_result": null
         }
       ],
       "metrics": {
@@ -258,7 +267,9 @@
         "replacements": 1,
         "hit_rate": 0.25,
         "fault_rate": 0.75
-      }
+      },
+      "tlb_capacity": 0,
+      "tlb": null
     },
     {
       "schema_version": 1,
@@ -304,7 +315,8 @@
           "order": [],
           "last_access": [],
           "next_use": []
-        }
+        },
+        "tlb": null
       },
       "events": [
         {
@@ -356,8 +368,10 @@
                 }
               ],
               "next_use": []
-            }
-          }
+            },
+            "tlb": null
+          },
+          "tlb_result": null
         },
         {
           "step": 2,
@@ -417,8 +431,10 @@
                 }
               ],
               "next_use": []
-            }
-          }
+            },
+            "tlb": null
+          },
+          "tlb_result": null
         },
         {
           "step": 3,
@@ -478,8 +494,10 @@
                 }
               ],
               "next_use": []
-            }
-          }
+            },
+            "tlb": null
+          },
+          "tlb_result": null
         },
         {
           "step": 4,
@@ -539,8 +557,10 @@
                 }
               ],
               "next_use": []
-            }
-          }
+            },
+            "tlb": null
+          },
+          "tlb_result": null
         }
       ],
       "metrics": {
@@ -550,7 +570,9 @@
         "replacements": 1,
         "hit_rate": 0.25,
         "fault_rate": 0.75
-      }
+      },
+      "tlb_capacity": 0,
+      "tlb": null
     },
     {
       "schema_version": 1,
@@ -596,7 +618,8 @@
           "order": [],
           "last_access": [],
           "next_use": []
-        }
+        },
+        "tlb": null
       },
       "events": [
         {
@@ -646,8 +669,10 @@
                   "step": 3
                 }
               ]
-            }
-          }
+            },
+            "tlb": null
+          },
+          "tlb_result": null
         },
         {
           "step": 2,
@@ -704,8 +729,10 @@
                   "step": null
                 }
               ]
-            }
-          }
+            },
+            "tlb": null
+          },
+          "tlb_result": null
         },
         {
           "step": 3,
@@ -762,8 +789,10 @@
                   "step": null
                 }
               ]
-            }
-          }
+            },
+            "tlb": null
+          },
+          "tlb_result": null
         },
         {
           "step": 4,
@@ -820,8 +849,10 @@
                   "step": null
                 }
               ]
-            }
-          }
+            },
+            "tlb": null
+          },
+          "tlb_result": null
         }
       ],
       "metrics": {
@@ -831,7 +862,9 @@
         "replacements": 1,
         "hit_rate": 0.25,
         "fault_rate": 0.75
-      }
+      },
+      "tlb_capacity": 0,
+      "tlb": null
     }
   ],
   "comparison": {
@@ -871,7 +904,8 @@
           "replacements": 3,
           "hit_rate": 0.0,
           "fault_rate": 1.0
-        }
+        },
+        "tlb": null
       },
       {
         "policy": "lru",
@@ -883,7 +917,8 @@
           "replacements": 3,
           "hit_rate": 0.0,
           "fault_rate": 1.0
-        }
+        },
+        "tlb": null
       },
       {
         "policy": "optimal",
@@ -895,7 +930,8 @@
           "replacements": 3,
           "hit_rate": 0.0,
           "fault_rate": 1.0
-        }
+        },
+        "tlb": null
       },
       {
         "policy": "fifo",
@@ -907,7 +943,8 @@
           "replacements": 1,
           "hit_rate": 0.25,
           "fault_rate": 0.75
-        }
+        },
+        "tlb": null
       },
       {
         "policy": "lru",
@@ -919,7 +956,8 @@
           "replacements": 1,
           "hit_rate": 0.25,
           "fault_rate": 0.75
-        }
+        },
+        "tlb": null
       },
       {
         "policy": "optimal",
@@ -931,12 +969,14 @@
           "replacements": 1,
           "hit_rate": 0.25,
           "fault_rate": 0.75
-        }
+        },
+        "tlb": null
       }
-    ]
+    ],
+    "tlb_capacity": 0
   },
   "experiment": {
-    "schema_version": 1,
+    "schema_version": 2,
     "config": {
       "page_size": 4096,
       "virtual_pages": 8,
@@ -949,6 +989,381 @@
       8194
     ],
     "input_mode": "addresses",
-    "policy": "fifo"
+    "policy": "fifo",
+    "tlb_capacity": 0
+  },
+  "tlb_simulation": {
+    "schema_version": 1,
+    "config": {
+      "page_size": 4096,
+      "virtual_pages": 8,
+      "physical_frames": 2,
+      "virtual_capacity": 32768,
+      "physical_capacity": 8192,
+      "offset_bits": 12
+    },
+    "input_mode": "addresses",
+    "policy": "lru",
+    "workload": [
+      0,
+      4097,
+      0,
+      8194
+    ],
+    "initial_state": {
+      "step": 0,
+      "frames": [
+        {
+          "frame_id": 0,
+          "page": null
+        },
+        {
+          "frame_id": 1,
+          "page": null
+        }
+      ],
+      "resident_pages": [],
+      "metrics": {
+        "references": 0,
+        "hits": 0,
+        "faults": 0,
+        "replacements": 0,
+        "hit_rate": null,
+        "fault_rate": null
+      },
+      "policy_state": {
+        "name": "lru",
+        "order": [],
+        "last_access": [],
+        "next_use": []
+      },
+      "tlb": {
+        "capacity": 2,
+        "hits": 0,
+        "misses": 0,
+        "entries": []
+      }
+    },
+    "events": [
+      {
+        "step": 1,
+        "input_value": 0,
+        "virtual_address": 0,
+        "page": 0,
+        "offset": 0,
+        "result": "fault",
+        "frame_id": 0,
+        "physical_address": 0,
+        "victim_page": null,
+        "reason": "Loaded page into free frame 0.",
+        "state": {
+          "step": 1,
+          "frames": [
+            {
+              "frame_id": 0,
+              "page": 0
+            },
+            {
+              "frame_id": 1,
+              "page": null
+            }
+          ],
+          "resident_pages": [
+            {
+              "page": 0,
+              "frame_id": 0
+            }
+          ],
+          "metrics": {
+            "references": 1,
+            "hits": 0,
+            "faults": 1,
+            "replacements": 0,
+            "hit_rate": 0.0,
+            "fault_rate": 1.0
+          },
+          "policy_state": {
+            "name": "lru",
+            "order": [
+              0
+            ],
+            "last_access": [
+              {
+                "frame_id": 0,
+                "step": 1
+              }
+            ],
+            "next_use": []
+          },
+          "tlb": {
+            "capacity": 2,
+            "hits": 0,
+            "misses": 1,
+            "entries": [
+              {
+                "page": 0,
+                "frame_id": 0
+              }
+            ]
+          }
+        },
+        "tlb_result": "miss"
+      },
+      {
+        "step": 2,
+        "input_value": 4097,
+        "virtual_address": 4097,
+        "page": 1,
+        "offset": 1,
+        "result": "fault",
+        "frame_id": 1,
+        "physical_address": 4097,
+        "victim_page": null,
+        "reason": "Loaded page into free frame 1.",
+        "state": {
+          "step": 2,
+          "frames": [
+            {
+              "frame_id": 0,
+              "page": 0
+            },
+            {
+              "frame_id": 1,
+              "page": 1
+            }
+          ],
+          "resident_pages": [
+            {
+              "page": 0,
+              "frame_id": 0
+            },
+            {
+              "page": 1,
+              "frame_id": 1
+            }
+          ],
+          "metrics": {
+            "references": 2,
+            "hits": 0,
+            "faults": 2,
+            "replacements": 0,
+            "hit_rate": 0.0,
+            "fault_rate": 1.0
+          },
+          "policy_state": {
+            "name": "lru",
+            "order": [
+              0,
+              1
+            ],
+            "last_access": [
+              {
+                "frame_id": 0,
+                "step": 1
+              },
+              {
+                "frame_id": 1,
+                "step": 2
+              }
+            ],
+            "next_use": []
+          },
+          "tlb": {
+            "capacity": 2,
+            "hits": 0,
+            "misses": 2,
+            "entries": [
+              {
+                "page": 0,
+                "frame_id": 0
+              },
+              {
+                "page": 1,
+                "frame_id": 1
+              }
+            ]
+          }
+        },
+        "tlb_result": "miss"
+      },
+      {
+        "step": 3,
+        "input_value": 0,
+        "virtual_address": 0,
+        "page": 0,
+        "offset": 0,
+        "result": "hit",
+        "frame_id": 0,
+        "physical_address": 0,
+        "victim_page": null,
+        "reason": "Page is already resident.",
+        "state": {
+          "step": 3,
+          "frames": [
+            {
+              "frame_id": 0,
+              "page": 0
+            },
+            {
+              "frame_id": 1,
+              "page": 1
+            }
+          ],
+          "resident_pages": [
+            {
+              "page": 0,
+              "frame_id": 0
+            },
+            {
+              "page": 1,
+              "frame_id": 1
+            }
+          ],
+          "metrics": {
+            "references": 3,
+            "hits": 1,
+            "faults": 2,
+            "replacements": 0,
+            "hit_rate": 0.3333333333333333,
+            "fault_rate": 0.6666666666666666
+          },
+          "policy_state": {
+            "name": "lru",
+            "order": [
+              1,
+              0
+            ],
+            "last_access": [
+              {
+                "frame_id": 0,
+                "step": 3
+              },
+              {
+                "frame_id": 1,
+                "step": 2
+              }
+            ],
+            "next_use": []
+          },
+          "tlb": {
+            "capacity": 2,
+            "hits": 1,
+            "misses": 2,
+            "entries": [
+              {
+                "page": 1,
+                "frame_id": 1
+              },
+              {
+                "page": 0,
+                "frame_id": 0
+              }
+            ]
+          }
+        },
+        "tlb_result": "hit"
+      },
+      {
+        "step": 4,
+        "input_value": 8194,
+        "virtual_address": 8194,
+        "page": 2,
+        "offset": 2,
+        "result": "fault",
+        "frame_id": 1,
+        "physical_address": 4098,
+        "victim_page": 1,
+        "reason": "LRU evicted page 1 from frame 1: last accessed at step 2.",
+        "state": {
+          "step": 4,
+          "frames": [
+            {
+              "frame_id": 0,
+              "page": 0
+            },
+            {
+              "frame_id": 1,
+              "page": 2
+            }
+          ],
+          "resident_pages": [
+            {
+              "page": 0,
+              "frame_id": 0
+            },
+            {
+              "page": 2,
+              "frame_id": 1
+            }
+          ],
+          "metrics": {
+            "references": 4,
+            "hits": 1,
+            "faults": 3,
+            "replacements": 1,
+            "hit_rate": 0.25,
+            "fault_rate": 0.75
+          },
+          "policy_state": {
+            "name": "lru",
+            "order": [
+              0,
+              1
+            ],
+            "last_access": [
+              {
+                "frame_id": 0,
+                "step": 3
+              },
+              {
+                "frame_id": 1,
+                "step": 4
+              }
+            ],
+            "next_use": []
+          },
+          "tlb": {
+            "capacity": 2,
+            "hits": 1,
+            "misses": 3,
+            "entries": [
+              {
+                "page": 0,
+                "frame_id": 0
+              },
+              {
+                "page": 2,
+                "frame_id": 1
+              }
+            ]
+          }
+        },
+        "tlb_result": "miss"
+      }
+    ],
+    "metrics": {
+      "references": 4,
+      "hits": 1,
+      "faults": 3,
+      "replacements": 1,
+      "hit_rate": 0.25,
+      "fault_rate": 0.75
+    },
+    "tlb_capacity": 2,
+    "tlb": {
+      "capacity": 2,
+      "hits": 1,
+      "misses": 3,
+      "entries": [
+        {
+          "page": 0,
+          "frame_id": 0
+        },
+        {
+          "page": 2,
+          "frame_id": 1
+        }
+      ]
+    }
   }
 }

@@ -57,7 +57,7 @@ function validMetrics(metrics, references) {
 }
 
 function validWorkload(data) {
-  if (!object(data) || data.schema_version !== 1 || !validConfig(data.config) ||
+  if (!object(data) || ![1, 2].includes(data.schema_version) || !validConfig(data.config) ||
       !['pages', 'addresses'].includes(data.input_mode) || !Array.isArray(data.workload) ||
       data.workload.length < 1 || data.workload.length > 1000) return false;
   const upper = data.input_mode === 'pages' ? data.config.virtual_pages : data.config.page_size * data.config.virtual_pages;
@@ -69,11 +69,22 @@ function validDerivedConfig(config) {
     config.physical_capacity === config.physical_frames * config.page_size && config.offset_bits === Math.log2(config.page_size);
 }
 
-function validSnapshot(state, config, policy, step) {
+function validTLB(tlb, capacity, step, config, frames = null) {
+  if (capacity === 0) return tlb === null;
+  return object(tlb) && tlb.capacity === capacity && integer(tlb.hits) && integer(tlb.misses) &&
+    tlb.hits + tlb.misses === step && Array.isArray(tlb.entries) &&
+    tlb.entries.length <= Math.min(capacity, config.physical_frames, step) &&
+    unique(tlb.entries.map((entry) => entry.page)) && unique(tlb.entries.map((entry) => entry.frame_id)) &&
+    tlb.entries.every((entry) => object(entry) && integer(entry.page, 0, config.virtual_pages - 1) &&
+      integer(entry.frame_id, 0, config.physical_frames - 1) && (!frames || frames[entry.frame_id].page === entry.page));
+}
+
+function validSnapshot(state, config, policy, step, tlbCapacity) {
   if (!object(state) || state.step !== step || !validMetrics(state.metrics, step) ||
       !Array.isArray(state.frames) || state.frames.length !== config.physical_frames) return false;
   if (!state.frames.every((frame, index) => object(frame) && frame.frame_id === index &&
       (frame.page === null || integer(frame.page, 0, config.virtual_pages - 1)))) return false;
+  if (!validTLB(state.tlb, tlbCapacity, step, config, state.frames)) return false;
   const occupied = state.frames.filter((frame) => frame.page !== null);
   const ids = occupied.map((frame) => frame.frame_id);
   if (!unique(occupied.map((frame) => frame.page)) || state.metrics.faults - state.metrics.replacements !== occupied.length ||
@@ -93,8 +104,8 @@ function validSnapshot(state, config, policy, step) {
 }
 
 export function validateSimulation(data) {
-  requireContract(validWorkload(data) && policies.includes(data.policy) && validDerivedConfig(data.config), 'simulation');
-  requireContract(validSnapshot(data.initial_state, data.config, data.policy, 0) &&
+  requireContract(validWorkload(data) && data.schema_version === 1 && integer(data.tlb_capacity, 0, 32) && policies.includes(data.policy) && validDerivedConfig(data.config), 'simulation');
+  requireContract(validSnapshot(data.initial_state, data.config, data.policy, 0, data.tlb_capacity) &&
     Array.isArray(data.events) && data.events.length === data.workload.length, 'simulation');
   let previous = data.initial_state;
   data.events.forEach((event, index) => {
@@ -108,7 +119,13 @@ export function validateSimulation(data) {
       ['hit', 'fault'].includes(event.result) && integer(event.frame_id, 0, config.physical_frames - 1) &&
       (event.victim_page === null || integer(event.victim_page, 0, config.virtual_pages - 1)) &&
       typeof event.reason === 'string' && event.reason.length > 0 &&
-      validSnapshot(event.state, config, data.policy, index + 1), 'simulation event');
+      validSnapshot(event.state, config, data.policy, index + 1, data.tlb_capacity), 'simulation event');
+    if (data.tlb_capacity) {
+      const cached = previous.tlb.entries.some((entry) => entry.page === page);
+      requireContract(event.tlb_result === (cached ? 'hit' : 'miss') && (!cached || event.result === 'hit') &&
+        event.state.tlb.hits === previous.tlb.hits + Number(cached) &&
+        event.state.tlb.misses === previous.tlb.misses + Number(!cached), 'TLB event');
+    } else requireContract(event.tlb_result === null, 'TLB event');
     const hit = previous.frames.some((frame) => frame.page === page);
     requireContract(event.result === (hit ? 'hit' : 'fault') &&
       event.state.frames[event.frame_id].page === page && event.physical_address === event.frame_id * config.page_size + offset &&
@@ -120,11 +137,13 @@ export function validateSimulation(data) {
   });
   requireContract(validMetrics(data.metrics, data.workload.length) &&
     ['hits', 'faults', 'replacements'].every((key) => data.metrics[key] === previous.metrics[key]), 'simulation totals');
+  requireContract(validTLB(data.tlb, data.tlb_capacity, data.workload.length, data.config, previous.frames) &&
+    JSON.stringify(data.tlb) === JSON.stringify(previous.tlb), 'TLB totals');
   return data;
 }
 
 export function validateComparison(data) {
-  requireContract(validWorkload(data) && validDerivedConfig(data.config) && Array.isArray(data.policies) &&
+  requireContract(validWorkload(data) && data.schema_version === 1 && integer(data.tlb_capacity, 0, 32) && validDerivedConfig(data.config) && Array.isArray(data.policies) &&
     data.policies.length >= 1 && data.policies.length <= 3 && unique(data.policies) && data.policies.every((policy) => policies.includes(policy)) &&
     Array.isArray(data.frame_counts) && data.frame_counts.length >= 1 && data.frame_counts.length <= 32 && unique(data.frame_counts) &&
     data.frame_counts.every((count) => integer(count, 1, 32)) && Array.isArray(data.rows) &&
@@ -134,6 +153,7 @@ export function validateComparison(data) {
     requireContract(object(row) && data.policies.includes(row.policy) && data.frame_counts.includes(row.physical_frames) &&
       validMetrics(row.metrics, data.workload.length) &&
       row.metrics.faults - row.metrics.replacements <= Math.min(row.physical_frames, data.config.virtual_pages), 'comparison row');
+    requireContract(validTLB(row.tlb, data.tlb_capacity, data.workload.length, { ...data.config, physical_frames: row.physical_frames }), 'comparison TLB');
     keys.push(`${row.policy}/${row.physical_frames}`);
   }
   requireContract(unique(keys), 'comparison');
@@ -141,7 +161,7 @@ export function validateComparison(data) {
 }
 
 function validateExperiment(data) {
-  requireContract(validWorkload(data) && policies.includes(data.policy), 'experiment');
+  requireContract(validWorkload(data) && data.schema_version === 2 && integer(data.tlb_capacity, 0, 32) && policies.includes(data.policy), 'experiment');
   return data;
 }
 

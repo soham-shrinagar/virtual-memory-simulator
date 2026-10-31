@@ -35,6 +35,14 @@ Select **Compare**, choose an inclusive frame range (1–32), then **Compare**. 
 
 **Export CSV** saves every comparison row with raw counts and unrounded fractional rates. **Save JSON** validates and downloads the current experiment; **Load JSON** validates a UTF-8 file up to 128 KiB and restores configuration, input mode, policy, and references. Run again to reproduce its trace. Invalid files and duplicate JSON keys are rejected without changing the editor. CSV contains results; JSON contains reproducible inputs, rather than playback position or comparison range.
 
+## Translation cache (TLB)
+
+Set **Translation cache (TLB)** to 1–32 entries, or leave it **Disabled**. This is a fully associative simulated cache with fixed LRU replacement, separate from the page-replacement policy. Playback shows cached page/frame mappings from least to most recent and the selected step's TLB hits/misses. A TLB miss can still be a page hit; only a nonresident page faults. Memory evictions invalidate cached mappings before a frame is reused. Hits through the TLB still update memory-policy recency.
+
+The TLB starts empty on every run. Its capacity may exceed the physical frame count. It never changes page-fault/replacement decisions for the same workload and memory policy. Comparison and CSV include separate cache counters when enabled; no hardware timing formula is implied. Send `tlb_capacity: 0` (disabled, default) or an integer 1–32 to the simulation, comparison, and experiment-export APIs.
+
+New experiment exports use **schema version 2**, including `tlb_capacity`. Version 1 files remain importable and explicitly mean TLB disabled. Import normalizes them to version 2. Trace/comparison responses retain schema version 1 with additive TLB fields: per-state/final `tlb` (null when disabled), `tlb_capacity`, and per-event `tlb_result` (hit/miss/null).
+
 ## Simulation API
 
 Run the local server, then send JSON to these routes:
@@ -44,7 +52,7 @@ Run the local server, then send JSON to these routes:
 | `GET /api/health` | Application version and frontend readiness |
 | `POST /api/simulate` | Full initial state, immutable events, and final metrics |
 | `POST /api/compare` | Fresh summary runs for each policy/frame-count pair |
-| `POST /api/experiments/export` | Download a canonical schema-version-1 experiment |
+| `POST /api/experiments/export` | Download a canonical schema-version-2 experiment |
 | `POST /api/experiments/import` | Validate and normalize a complete versioned experiment |
 
 Example simulation request:
@@ -168,7 +176,7 @@ This checks archive contents, installs the pinned requirements and each distribu
 
 ## Verification scope and model limits
 
-Recorded on 30 October 2026: Ubuntu 24.04.3 x86-64 under WSL2 (kernel 5.15.167.4, Python 3.12.3) and Windows 11 (Python 3.13.1); Node 22.23.2 for builds. Both platforms passed 101 Python tests, 46 JavaScript tests, production builds, and fresh wheel/source installations. Linux shutdown with SIGINT exits cleanly. Browser checks verified real JSON/CSV downloads, restored address-mode settings, replay, and Belady's anomaly. Chromium 156.0.8078.4 rendered the application under WSLg. The full Firefox/Chromium desktop demo has not yet been completed on an independent Linux desktop/VM; do not treat WSL API/build tests as that check.
+Recorded on 30 October 2026: Ubuntu 24.04.3 x86-64 under WSL2 (kernel 5.15.167.4, Python 3.12.3) and Windows 11 (Python 3.13.1); Node 22.23.2 for builds. Both platforms passed 115 Python tests, 48 JavaScript tests, production builds, and fresh wheel/source installations. Linux shutdown with SIGINT exits cleanly. Browser checks verified real JSON/CSV downloads, restored address-mode settings, replay, and Belady's anomaly. Chromium 156.0.8078.4 rendered the application under WSLg. The full Firefox/Chromium desktop demo has not yet been completed on an independent Linux desktop/VM; do not treat WSL API/build tests as that check.
 
 Measure the bounded workload on your demo machine, with the server running:
 
@@ -178,7 +186,7 @@ Measure the bounded workload on your demo machine, with the server running:
 
 The script uses 1,000 references, 256 virtual pages, 32 frames, and a sweep of all 96 policy/frame pairs. It reports five warmed repetitions with median and maximum times, separating engine/JSON work from HTTP. After removing repeated workload validation and generic dataclass serialization, the final WSL run measured HTTP Optimal median **0.38 seconds** (max 0.56) and full comparison median **1.20 seconds** (max 1.33). Engine + JSON medians were 0.31/0.37/0.23 seconds for FIFO/LRU/Optimal; summary sweep median was 0.76 seconds. These are reference-machine measurements, not guarantees under contention. Browser rendering/control latency is excluded.
 
-The model uses one process, a flat page table, and successful abstract page loads. It does not manipulate Linux memory, access swap, emulate dirty writeback/permissions/multilevel paging, or measure hardware timing. LRU is exact simulated recency; Optimal uses future knowledge. TLB, CLOCK, synthetic generators, and effective-access-time formulas are outside the required release.
+The model uses one process, a flat page table, and successful abstract page loads. It does not manipulate Linux memory, access swap, emulate dirty writeback/permissions/multilevel paging, or measure hardware timing. LRU is exact simulated recency; Optimal uses future knowledge. The optional TLB is a teaching extension. CLOCK, synthetic generators, and effective-access-time formulas are outside the required core release.
 
 Suggested 5–7 minute demo: run the default FIFO workload (5 faults, 2 hits); inspect a load, hit, and replacement; step backward/reset/replay; use address inputs `4096,8300,4097` to explain offsets; compare all policies; load Belady's preset (FIFO 9→10 faults for 3→4 frames); export CSV and save/load JSON. Repeat this flow in Firefox and Chromium on the target Linux desktop, check keyboard controls/narrow screens, and stop the server with Ctrl+C.
 

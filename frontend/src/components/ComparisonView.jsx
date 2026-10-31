@@ -50,7 +50,7 @@ export default function ComparisonView({ draft, onBelady }) {
   const anomalies = result ? result.rows.filter((row) => row.policy === 'fifo').sort((a, b) => a.physical_frames - b.physical_frames).flatMap((row, index, rows) => index && row.metrics.faults > rows[index - 1].metrics.faults ? [`${rows[index - 1].physical_frames} → ${row.physical_frames} frames: ${rows[index - 1].metrics.faults} → ${row.metrics.faults} faults`] : []) : [];
   return <section className="panel comparison-panel" aria-labelledby="comparison-title">
     <div className="section-heading"><h2 id="comparison-title">Compare algorithms</h2><button className="text-button" onClick={() => { setFrom('3'); setTo('4'); onBelady(); }}>Belady preset</button></div>
-    <p className="muted-note">Every policy starts with empty memory and uses the same references. The sweep replaces the configured physical-frame count.</p>
+    <p className="muted-note">Every policy starts with empty memory and uses the same references. The sweep replaces the configured physical-frame count. TLB settings are shared across runs and do not change page-fault counts.</p>
     <form onSubmit={compare} className="comparison-form" aria-label="Frame sweep" noValidate>
       <label>From frames<input type="number" min="1" max="32" value={from} onChange={(event) => setFrom(event.target.value)} /></label>
       <label>To frames<input type="number" min="1" max="32" value={to} onChange={(event) => setTo(event.target.value)} /></label>
@@ -61,8 +61,8 @@ export default function ComparisonView({ draft, onBelady }) {
     {result && <>
       <FaultChart result={result} />
       {anomalies.length > 0 && <p role="status" className="anomaly-note">Belady’s anomaly observed in FIFO: {anomalies.join('; ')}.</p>}
-      <div className="table-scroll" tabIndex="0" role="region" aria-label="Scrollable comparison results"><table aria-label="Comparison results"><thead><tr><th scope="col">Policy</th><th scope="col">Frames</th><th scope="col">Hits</th><th scope="col">Faults</th><th scope="col">Replacements</th><th scope="col">Fault rate</th></tr></thead><tbody>
-        {result.rows.map((row) => <tr key={`${row.policy}-${row.physical_frames}`}><td>{names[row.policy]}</td><td>{row.physical_frames}</td><td>{row.metrics.hits}</td><td>{row.metrics.faults}</td><td>{row.metrics.replacements}</td><td>{(row.metrics.fault_rate * 100).toFixed(2)}%</td></tr>)}
+      <div className="table-scroll" tabIndex="0" role="region" aria-label="Scrollable comparison results"><table aria-label="Comparison results"><thead><tr><th scope="col">Policy</th><th scope="col">Frames</th><th scope="col">Hits</th><th scope="col">Faults</th><th scope="col">Replacements</th><th scope="col">Fault rate</th>{result.tlb_capacity > 0 && <><th scope="col">TLB hits</th><th scope="col">TLB misses</th></>}</tr></thead><tbody>
+        {result.rows.map((row) => <tr key={`${row.policy}-${row.physical_frames}`}><td>{names[row.policy]}</td><td>{row.physical_frames}</td><td>{row.metrics.hits}</td><td>{row.metrics.faults}</td><td>{row.metrics.replacements}</td><td>{(row.metrics.fault_rate * 100).toFixed(2)}%</td>{row.tlb && <><td>{row.tlb.hits}</td><td>{row.tlb.misses}</td></>}</tr>)}
       </tbody></table></div>
       <button className="button csv-button" onClick={() => downloadFile('comparison.csv', comparisonCsv(result), 'text/csv;charset=utf-8')}>Export CSV</button>
     </>}

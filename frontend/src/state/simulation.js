@@ -1,6 +1,6 @@
 export const defaultDraft = {
   pageSize: '4096', virtualPages: '8', physicalFrames: '3',
-  inputMode: 'pages', policy: 'fifo', workload: '1, 2, 3, 1, 4, 2, 5',
+  inputMode: 'pages', policy: 'fifo', tlbCapacity: '0', workload: '1, 2, 3, 1, 4, 2, 5',
 };
 
 export const initialState = { draft: defaultDraft, trace: null };
@@ -38,10 +38,12 @@ export function buildRequest(draft) {
   if ((pageSize & (pageSize - 1)) !== 0) throw new Error('Page size must be a power of two.');
   const virtualPages = integer(draft.virtualPages, 'Virtual pages', 1, 256);
   const physicalFrames = integer(draft.physicalFrames, 'Physical frames', 1, 32);
+  const tlbCapacity = integer(draft.tlbCapacity, 'TLB capacity', 0, 32);
   if (!draft.workload.trim()) throw new Error('Enter at least one memory reference.');
   return {
     config: { page_size: pageSize, virtual_pages: virtualPages, physical_frames: physicalFrames },
     workload: draft.workload, input_mode: draft.inputMode, policy: draft.policy,
+    ...(tlbCapacity ? { tlb_capacity: tlbCapacity } : {}),
   };
 }
 

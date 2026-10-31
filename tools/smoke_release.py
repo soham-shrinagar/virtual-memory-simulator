@@ -99,6 +99,9 @@ runpy.run_module('vmsim', run_name='__main__')
             comparison = post("/api/compare", {"workload": [1, 2, 3, 4, 1, 2, 5, 1, 2, 3, 4, 5],
                                                "policies": ["fifo"], "frame_counts": [3, 4]})
             assert [row["metrics"]["faults"] for row in comparison["rows"]] == [9, 10]
+            cached = post('/api/simulate', {'workload': [0, 1, 0], 'tlb_capacity': 2, 'policy': 'lru'})
+            assert cached['tlb']['hits'] == 1 and cached['tlb']['misses'] == 2
+            assert cached['metrics']['faults'] == 2 and cached['events'][2]['tlb_result'] == 'hit'
             experiment = post("/api/experiments/export", {"workload": "4096,8300,4097", "input_mode": "addresses"})
             assert post("/api/experiments/import", experiment) == experiment
             duplicate = '{"policy":"lru",' + json.dumps(experiment)[1:]

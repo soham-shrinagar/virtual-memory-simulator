@@ -116,6 +116,7 @@ def contract_payloads(client):
         "simulations": [client.post("/api/simulate", json={**request, "policy": policy}).json() for policy in ("fifo", "lru", "optimal")],
         "comparison": client.post("/api/compare", json={**request, "frame_counts": [1, 2]}).json(),
         "experiment": client.post("/api/experiments/export", json={**request, "policy": "fifo"}).json(),
+        "tlb_simulation": client.post('/api/simulate', json={**request, 'policy': 'lru', 'tlb_capacity': 2}).json(),
     }
 
 
