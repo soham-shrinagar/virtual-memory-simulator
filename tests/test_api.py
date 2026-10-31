@@ -84,7 +84,7 @@ def test_compare_api_belady_and_invalid_options(client):
     body = {"workload": "1,2,3,4,1,2,5,1,2,3,4,5", "frame_counts": [3, 4]}
     response = client.post("/api/compare", json=body)
     assert response.status_code == 200, response.text
-    assert [row["metrics"]["faults"] for row in response.json()["rows"]] == [9, 10, 7, 10, 8, 6]
+    assert [row["metrics"]["faults"] for row in response.json()["rows"]] == [9, 10, 7, 9, 10, 8, 6, 10]
     for bad in ({"frame_counts": [True]}, {"policies": ["fifo", "fifo"]}, {"frame_counts": [1, 1]}):
         assert client.post("/api/compare", json={**body, **bad}).status_code == 422
 
@@ -118,6 +118,7 @@ def contract_payloads(client):
         "experiment": client.post("/api/experiments/export", json={**request, "policy": "fifo"}).json(),
         "tlb_simulation": client.post('/api/simulate', json={**request, 'policy': 'lru', 'tlb_capacity': 2}).json(),
         "generated_workload": client.post('/api/workloads/generate', json={'seed': 42, 'length': 5, 'profile': 'uniform'}).json(),
+        "clock_simulation": client.post('/api/simulate', json={'workload': [0, 1, 2, 0, 3, 1, 4], 'policy': 'clock', 'tlb_capacity': 2}).json(),
     }
 
 

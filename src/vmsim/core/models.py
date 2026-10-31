@@ -80,6 +80,8 @@ class PolicyState:
     order: tuple[int, ...] = ()
     last_access: tuple[tuple[int, int], ...] = ()
     next_use: tuple[tuple[int, int | None], ...] = ()
+    hand: int | None = None
+    reference_bits: tuple[tuple[int, bool], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

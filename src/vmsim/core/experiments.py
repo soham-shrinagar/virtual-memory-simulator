@@ -33,7 +33,7 @@ class ComparisonRow:
 def make_experiment(config, workload, input_mode="pages", policy="fifo", tlb_capacity=0) -> Experiment:
     accesses = normalize_and_validate(config, workload, input_mode)
     if policy not in POLICIES:
-        raise ValidationError("Choose fifo, lru, or optimal.", "policy")
+        raise ValidationError("Choose fifo, lru, optimal, or clock.", "policy")
     require_int(tlb_capacity, 'tlb_capacity', 0, 32)
     return Experiment(config, tuple(access.input_value for access in accesses), input_mode, policy, tlb_capacity)
 
@@ -81,13 +81,15 @@ def load_experiment(text: str) -> Experiment:
     config = data["config"]
     if not isinstance(config, dict) or set(config) != {"page_size", "virtual_pages", "physical_frames"}:
         raise ValidationError("Invalid memory configuration fields.", "config")
+    if data['schema_version'] == 1 and data['policy'] == 'clock':
+        raise ValidationError('CLOCK requires experiment schema version 2.', 'policy')
     return make_experiment(MemoryConfig(**config), data["workload"], data["input_mode"], data["policy"], data['tlb_capacity'] if data['schema_version'] == 2 else 0)
 
 
 def compare(config, workload, input_mode="pages", policies=POLICIES, frame_counts=None, *, tlb_capacity=0) -> tuple[ComparisonRow, ...]:
     accesses = normalize_and_validate(config, workload, input_mode)
-    if not isinstance(policies, (tuple, list)) or not 1 <= len(policies) <= 3 or any(p not in POLICIES for p in policies):
-        raise ValidationError("Select between one and three supported policies.", "policies")
+    if not isinstance(policies, (tuple, list)) or not 1 <= len(policies) <= len(POLICIES) or any(p not in POLICIES for p in policies):
+        raise ValidationError("Select between one and four supported policies.", "policies")
     if len(set(policies)) != len(policies):
         raise ValidationError("Policies must be unique.", "policies")
     counts = [config.physical_frames] if frame_counts is None else frame_counts

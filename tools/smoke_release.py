@@ -106,6 +106,8 @@ runpy.run_module('vmsim', run_name='__main__')
             generated = post('/api/workloads/generate', recipe)
             assert generated['workload'] == [0, 2, 1, 5, 5]
             assert generated == post('/api/workloads/generate', recipe)
+            clock = post('/api/simulate', {'workload': [0, 1, 2, 0, 3, 1, 4], 'policy': 'clock', 'tlb_capacity': 2})
+            assert [event['victim_page'] for event in clock['events'] if event['victim_page'] is not None] == [0, 2]
             experiment = post("/api/experiments/export", {"workload": "4096,8300,4097", "input_mode": "addresses"})
             assert post("/api/experiments/import", experiment) == experiment
             duplicate = '{"policy":"lru",' + json.dumps(experiment)[1:]

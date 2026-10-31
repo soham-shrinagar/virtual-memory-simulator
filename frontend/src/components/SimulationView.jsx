@@ -1,6 +1,6 @@
 import PlaybackControls from './PlaybackControls.jsx';
+import { policyNames } from '../state/policies.js';
 
-const policyNames = { fifo: 'FIFO', lru: 'LRU', optimal: 'Optimal' };
 const rate = (value) => value === null ? '—' : `${(value * 100).toFixed(1)}%`;
 
 function MetricsPanel({ metrics }) {
@@ -50,8 +50,10 @@ function PolicyState({ snapshot, policy }) {
   const lastAccess = new Map(metadata.last_access.map((entry) => [entry.frame_id, entry.step]));
   return <section className="panel detail-panel" aria-labelledby="policy-title">
     <div className="section-heading"><h2 id="policy-title">Policy state</h2><span className="small-note">{policyNames[policy]}</span></div>
-    <p className="muted-note">{policy === 'fifo' ? 'Arrival order · oldest first' : policy === 'lru' ? 'Access order · least recent first' : 'Next reference for each resident page'}</p>
-    {snapshot.resident_pages.length === 0 ? <p className="muted-note">No resident pages.</p> : policy === 'optimal' ?
+    <p className="muted-note">{policy === 'fifo' ? 'Arrival order · oldest first' : policy === 'lru' ? 'Access order · least recent first' : policy === 'clock' ? `Hand → F${metadata.hand}. A set bit receives a second chance.` : 'Next reference for each resident page'}</p>
+    {policy === 'clock' && <p className="field-hint">Hits set a reference bit. On replacement, the hand clears set bits and evicts the first frame with bit 0, then advances past the loaded frame.</p>}
+    {snapshot.resident_pages.length === 0 ? <p className="muted-note">No resident pages.</p> : policy === 'clock' ?
+      <ul className="policy-list">{metadata.reference_bits.map((entry) => <li key={entry.frame_id}><span>P{page(entry.frame_id)} <small>F{entry.frame_id}{metadata.hand === entry.frame_id ? ' ← hand' : ''}</small></span><span>Reference bit {Number(entry.referenced)}</span></li>)}</ul> : policy === 'optimal' ?
       <ul className="policy-list">{metadata.next_use.map((entry) => <li key={entry.frame_id}><span>P{page(entry.frame_id)} <small>F{entry.frame_id}</small></span><span>{entry.step === null ? 'Never used again' : `Step ${entry.step}`}</span></li>)}</ul> :
       <ol className="policy-order">{metadata.order.map((frame) => <li key={frame}><strong>P{page(frame)}</strong><span>F{frame}{policy === 'lru' && ` · step ${lastAccess.get(frame)}`}</span></li>)}</ol>}
     {policy === 'optimal' && <p className="field-hint">Offline benchmark using the complete workload.</p>}
@@ -86,7 +88,7 @@ function TLBView({ tlb, event }) {
 
 export default function SimulationView({ trace, busy, playback }) {
   if (!trace) return <section className="panel empty-workspace" aria-label="Simulation workspace" aria-busy={busy}>
-    <span className="empty-symbol" aria-hidden="true">[ &nbsp; ]</span><h2>{busy ? 'Preparing your trace…' : 'Your memory workspace'}</h2><p>{busy ? 'Calculating each reference and memory decision.' : 'Choose a memory model, then run a simulation.'}</p><span className="small-note">FIFO / LRU / Optimal</span>
+    <span className="empty-symbol" aria-hidden="true">[ &nbsp; ]</span><h2>{busy ? 'Preparing your trace…' : 'Your memory workspace'}</h2><p>{busy ? 'Calculating each reference and memory decision.' : 'Choose a memory model, then run a simulation.'}</p><span className="small-note">FIFO / LRU / Optimal / CLOCK</span>
   </section>;
 
   const { cursor } = playback;

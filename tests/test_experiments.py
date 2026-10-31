@@ -41,7 +41,7 @@ def test_comparison_is_fresh_and_matches_standalone():
     config = MemoryConfig()
     pages = [1, 2, 3, 4, 1, 2, 5, 1, 2, 3, 4, 5]
     rows = compare(config, pages, frame_counts=[3, 4])
-    assert [row.metrics.faults for row in rows] == [9, 10, 7, 10, 8, 6]
+    assert [row.metrics.faults for row in rows] == [9, 10, 7, 9, 10, 8, 6, 10]
     for row in rows:
         standalone = simulate(replace(config, physical_frames=row.physical_frames), pages, policy=row.policy)
         assert row.metrics == standalone.metrics

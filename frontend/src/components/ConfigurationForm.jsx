@@ -26,7 +26,7 @@ export default function ConfigurationForm({ draft, busy, error, onEdit, onExampl
       </dl>
       <label htmlFor="policy">Replacement policy</label>
       <select id="policy" value={draft.policy} onChange={change('policy')}>
-        <option value="fifo">FIFO · First in, first out</option><option value="lru">LRU · Least recently used</option><option value="optimal">Optimal · Offline benchmark</option>
+        <option value="fifo">FIFO · First in, first out</option><option value="lru">LRU · Least recently used</option><option value="optimal">Optimal · Offline benchmark</option><option value="clock">CLOCK · Second chance</option>
       </select>
       <label htmlFor="tlb-capacity">Translation cache (TLB)</label>
       <select id="tlb-capacity" value={draft.tlbCapacity} onChange={change('tlbCapacity')}>

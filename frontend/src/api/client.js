@@ -1,3 +1,5 @@
+import { policies } from '../state/policies.js';
+
 export async function getHealth(signal) {
   const response = await fetch('/api/health', { signal });
   if (!response.ok) throw new Error(`Backend returned HTTP ${response.status}`);
@@ -10,7 +12,6 @@ export async function getHealth(signal) {
   return data;
 }
 
-const policies = ['fifo', 'lru', 'optimal'];
 const object = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 const integer = (value, min = 0, max = Number.MAX_SAFE_INTEGER) => Number.isSafeInteger(value) && value >= min && value <= max;
 const unique = (values) => new Set(values).size === values.length;
@@ -94,7 +95,12 @@ function validSnapshot(state, config, policy, step, tlbCapacity) {
       !unique(state.resident_pages.map((entry) => entry.page))) return false;
   const metadata = state.policy_state;
   if (!object(metadata) || metadata.name !== policy || !Array.isArray(metadata.order) ||
-      !Array.isArray(metadata.last_access) || !Array.isArray(metadata.next_use)) return false;
+      !Array.isArray(metadata.last_access) || !Array.isArray(metadata.next_use) || !Array.isArray(metadata.reference_bits)) return false;
+  if (policy === 'clock') return metadata.order.length === 0 && metadata.last_access.length === 0 && metadata.next_use.length === 0 &&
+    integer(metadata.hand, 0, config.physical_frames - 1) && metadata.reference_bits.length === ids.length &&
+    unique(metadata.reference_bits.map((entry) => entry.frame_id)) &&
+    metadata.reference_bits.every((entry) => object(entry) && ids.includes(entry.frame_id) && typeof entry.referenced === 'boolean');
+  if (metadata.hand !== null || metadata.reference_bits.length !== 0) return false;
   const validPositions = (positions, future) => positions.length === ids.length && unique(positions.map((entry) => entry?.frame_id)) &&
     positions.every((entry) => object(entry) && ids.includes(entry.frame_id) &&
       (future ? entry.step === null || integer(entry.step, step + 1, 1000) : integer(entry.step, 1, step)));
@@ -144,7 +150,7 @@ export function validateSimulation(data) {
 
 export function validateComparison(data) {
   requireContract(validWorkload(data) && data.schema_version === 1 && integer(data.tlb_capacity, 0, 32) && validDerivedConfig(data.config) && Array.isArray(data.policies) &&
-    data.policies.length >= 1 && data.policies.length <= 3 && unique(data.policies) && data.policies.every((policy) => policies.includes(policy)) &&
+    data.policies.length >= 1 && data.policies.length <= policies.length && unique(data.policies) && data.policies.every((policy) => policies.includes(policy)) &&
     Array.isArray(data.frame_counts) && data.frame_counts.length >= 1 && data.frame_counts.length <= 32 && unique(data.frame_counts) &&
     data.frame_counts.every((count) => integer(count, 1, 32)) && Array.isArray(data.rows) &&
     data.rows.length === data.frame_counts.length * data.policies.length, 'comparison');

@@ -14,7 +14,7 @@ from vmsim.core.validation import ValidationError
 from vmsim.web.app import create_app
 
 
-@pytest.mark.parametrize('policy', ['fifo', 'lru', 'optimal'])
+@pytest.mark.parametrize('policy', ['fifo', 'lru', 'optimal', 'clock'])
 def test_cache_hit_miss_and_resident_miss_are_separate(policy):
     result = simulate(MemoryConfig(), [0, 1, 0, 0], policy=policy, tlb_capacity=1)
     assert [event.tlb_result for event in result.events] == ['miss', 'miss', 'miss', 'hit']
@@ -40,7 +40,7 @@ def test_lru_hits_through_tlb_update_the_memory_policy():
     assert result.events[3].victim_page == 1
 
 
-@pytest.mark.parametrize('policy', ['fifo', 'lru', 'optimal'])
+@pytest.mark.parametrize('policy', ['fifo', 'lru', 'optimal', 'clock'])
 def test_tlb_never_changes_page_decisions_on_exhaustive_short_workloads(policy):
     for pages in product(range(3), repeat=5):
         baseline = simulate(MemoryConfig(physical_frames=2), pages, policy=policy)

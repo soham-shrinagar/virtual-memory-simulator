@@ -3,6 +3,9 @@
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StrictInt, model_validator
+from vmsim.core.policies import POLICIES
+
+PolicyName = Literal['fifo', 'lru', 'optimal', 'clock']
 
 
 class HealthResponse(BaseModel):
@@ -26,7 +29,7 @@ class SimulationRequest(StrictModel):
     config: ConfigRequest = Field(default_factory=ConfigRequest)
     workload: str | list[StrictInt]
     input_mode: Literal["pages", "addresses"] = "pages"
-    policy: Literal["fifo", "lru", "optimal"] = "fifo"
+    policy: PolicyName = "fifo"
     tlb_capacity: int = Field(default=0, ge=0, le=32)
 
 
@@ -52,7 +55,7 @@ class CompareRequest(StrictModel):
     workload: str | list[StrictInt]
     input_mode: Literal["pages", "addresses"] = "pages"
     tlb_capacity: int = Field(default=0, ge=0, le=32)
-    policies: list[Literal["fifo", "lru", "optimal"]] = Field(default_factory=lambda: ["fifo", "lru", "optimal"], min_length=1, max_length=3)
+    policies: list[PolicyName] = Field(default_factory=lambda: list(POLICIES), min_length=1, max_length=4)
     frame_counts: list[StrictInt] | None = Field(default=None, min_length=1, max_length=32)
 
 
@@ -94,11 +97,18 @@ class PolicyPosition(StrictModel):
     step: int | None
 
 
+class ReferenceBit(StrictModel):
+    frame_id: int
+    referenced: bool
+
+
 class PolicyResponse(StrictModel):
-    name: Literal["fifo", "lru", "optimal"]
+    name: PolicyName
     order: list[int]
     last_access: list[PolicyPosition]
     next_use: list[PolicyPosition]
+    hand: int | None
+    reference_bits: list[ReferenceBit]
 
 
 class TLBResponse(StrictModel):
@@ -136,7 +146,7 @@ class SimulationResponse(StrictModel):
     schema_version: int
     config: ConfigResponse
     input_mode: Literal["pages", "addresses"]
-    policy: Literal["fifo", "lru", "optimal"]
+    policy: PolicyName
     workload: list[int]
     initial_state: SnapshotResponse
     events: list[EventResponse]
@@ -146,7 +156,7 @@ class SimulationResponse(StrictModel):
 
 
 class ComparisonRowResponse(StrictModel):
-    policy: Literal["fifo", "lru", "optimal"]
+    policy: PolicyName
     physical_frames: int
     metrics: MetricsResponse
     tlb: TLBResponse | None

@@ -1,6 +1,7 @@
 """Rehearse fresh wheel/source installations; run with the development Python."""
 
 import argparse
+import ast
 from pathlib import Path
 import subprocess
 import sys
@@ -23,6 +24,9 @@ def main():
         wheel_names = archive.namelist()
     with tarfile.open(source) as archive:
         source_names = archive.getnames()
+        for member in archive.getmembers():
+            if member.isfile() and member.name.endswith('.py'):
+                ast.parse(archive.extractfile(member).read(), filename=member.name)
     for names in (wheel_names, source_names):
         assert any('/web/static/assets/' in name and name.endswith('.js') for name in names), 'Built frontend missing'
         for name in names:

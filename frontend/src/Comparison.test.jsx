@@ -21,13 +21,13 @@ it('sends a fresh sweep, renders exact API metrics, and exports raw CSV rates', 
   fireEvent.change(screen.getByLabelText('To frames'), { target: { value: '2' } });
   fireEvent.click(screen.getByRole('button', { name: 'Compare', exact: true }));
   const table = await screen.findByRole('table', { name: 'Comparison results' });
-  expect(within(table).getAllByRole('row')).toHaveLength(7);
+  expect(within(table).getAllByRole('row')).toHaveLength(9);
   expect(screen.getByRole('img')).toHaveAccessibleName(/Fault counts/);
   const request = fetcher.mock.calls.find(([url]) => url === '/api/compare');
-  expect(JSON.parse(request[1].body)).toMatchObject({ frame_counts: [1, 2], policies: ['fifo', 'lru', 'optimal'] });
+  expect(JSON.parse(request[1].body)).toMatchObject({ frame_counts: [1, 2], policies: ['fifo', 'lru', 'optimal', 'clock'] });
   expect(JSON.parse(request[1].body)).not.toHaveProperty('policy');
   const csv = comparisonCsv(contracts.comparison);
-  expect(csv.split('\r\n')).toHaveLength(8);
+  expect(csv.split('\r\n')).toHaveLength(10);
   const row = contracts.comparison.rows[0];
   expect(csv).toContain(`${row.policy},${row.physical_frames},4,${row.metrics.hits},${row.metrics.faults},${row.metrics.replacements},${row.metrics.hit_rate},${row.metrics.fault_rate}`);
 });
@@ -37,8 +37,8 @@ it('loads the Belady preset and reports the 9 to 10 fault increase', async () =>
     const data = structuredClone(contracts.comparison);
     data.input_mode = 'pages'; data.workload = [1,2,3,4,1,2,5,1,2,3,4,5]; data.frame_counts = [3,4];
     data.rows.forEach((row, index) => {
-      const faults = [9,10,7,10,8,6][index];
-      row.physical_frames = index < 3 ? 3 : 4;
+      const faults = [9,10,7,9,10,8,6,10][index];
+      row.physical_frames = index < 4 ? 3 : 4;
       row.metrics = { references: 12, faults, hits: 12-faults, replacements: faults-row.physical_frames, hit_rate: (12-faults)/12, fault_rate: faults/12 };
     });
     return response(data);

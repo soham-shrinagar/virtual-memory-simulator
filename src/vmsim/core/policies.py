@@ -5,7 +5,7 @@ from collections import defaultdict, deque
 from vmsim.core.models import Access, PolicyState
 from vmsim.core.validation import ValidationError
 
-POLICIES = ("fifo", "lru", "optimal")
+POLICIES = ("fifo", "lru", "optimal", "clock")
 
 
 class ReplacementPolicy:
@@ -81,6 +81,35 @@ class Optimal(ReplacementPolicy):
         return PolicyState("optimal", next_use=tuple((frame, self.next_use(page)) for frame, page in enumerate(frames) if page is not None))
 
 
+class Clock(ReplacementPolicy):
+    def __init__(self):
+        self.hand = 0
+        self.bits: dict[int, bool] = {}
+
+    def on_load(self, frame, page, index):
+        self.hand = frame + 1
+
+    def on_access(self, frame, page, index):
+        self.bits[frame] = True
+
+    def on_evict(self, frame):
+        del self.bits[frame]
+
+    def select_victim(self, frames):
+        self.hand %= len(frames)
+        cleared = []
+        while self.bits[self.hand]:
+            self.bits[self.hand] = False
+            cleared.append(self.hand)
+            self.hand = (self.hand + 1) % len(frames)
+        frame = self.hand
+        scan = f"Cleared reference bits in frames {', '.join(map(str, cleared))}. " if cleared else ''
+        return frame, f"{scan}CLOCK evicted page {frames[frame]} from frame {frame}: reference bit was 0 at the hand."
+
+    def snapshot(self, frames):
+        return PolicyState('clock', hand=self.hand % len(frames), reference_bits=tuple(sorted(self.bits.items())))
+
+
 def create_policy(name: str, accesses: tuple[Access, ...]) -> ReplacementPolicy:
     if name == "fifo":
         return FIFO()
@@ -88,4 +117,6 @@ def create_policy(name: str, accesses: tuple[Access, ...]) -> ReplacementPolicy:
         return LRU()
     if name == "optimal":
         return Optimal(accesses)
-    raise ValidationError("Choose fifo, lru, or optimal.", "policy")
+    if name == 'clock':
+        return Clock()
+    raise ValidationError("Choose fifo, lru, optimal, or clock.", "policy")

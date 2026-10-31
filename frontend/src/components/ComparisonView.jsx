@@ -3,9 +3,9 @@ import { compareAlgorithms } from '../api/client.js';
 import useRequest from '../hooks/useRequest.js';
 import { buildRequest } from '../state/simulation.js';
 import { comparisonCsv, downloadFile } from '../state/files.js';
+import { policies, policyNames as names } from '../state/policies.js';
 
-const names = { fifo: 'FIFO', lru: 'LRU', optimal: 'Optimal' };
-const colors = { fifo: '#49647d', lru: '#92723d', optimal: '#547b61' };
+const colors = { fifo: '#49647d', lru: '#92723d', optimal: '#547b61', clock: '#805e8c' };
 
 function FaultChart({ result }) {
   const counts = [...result.frame_counts].sort((a, b) => a - b);
@@ -21,7 +21,7 @@ function FaultChart({ result }) {
       {result.policies.map((policy, index) => {
         const rows = result.rows.filter((row) => row.policy === policy).sort((a, b) => a.physical_frames - b.physical_frames);
         return <g key={policy} stroke={colors[policy]} fill={colors[policy]}>
-          <polyline points={rows.map((row) => `${x(row.physical_frames)},${y(row.metrics.faults)}`).join(' ')} fill="none" strokeWidth="2" strokeDasharray={index === 1 ? '7 4' : index === 2 ? '2 4' : undefined} />
+          <polyline points={rows.map((row) => `${x(row.physical_frames)},${y(row.metrics.faults)}`).join(' ')} fill="none" strokeWidth="2" strokeDasharray={[undefined, '7 4', '2 4', '9 3 2 3'][index]} />
           {rows.map((row) => <circle key={row.physical_frames} cx={x(row.physical_frames)} cy={y(row.metrics.faults)} r="3"><title>{names[policy]}, {row.physical_frames} frames: {row.metrics.faults} faults</title></circle>)}
         </g>;
       })}
@@ -44,7 +44,7 @@ export default function ComparisonView({ draft, onBelady }) {
       const { policy, ...payload } = buildRequest(draft);
       const start = Number(from), end = Number(to);
       if (!/^\d+$/.test(from) || !/^\d+$/.test(to) || start < 1 || end > 32 || start > end) throw new Error('Frame range must be whole numbers from 1 to 32, with start no greater than end.');
-      return compareAlgorithms({ ...payload, policies: ['fifo', 'lru', 'optimal'], frame_counts: Array.from({ length: end - start + 1 }, (_, i) => start + i) }, signal);
+      return compareAlgorithms({ ...payload, policies, frame_counts: Array.from({ length: end - start + 1 }, (_, i) => start + i) }, signal);
     }, setResult);
   };
   const anomalies = result ? result.rows.filter((row) => row.policy === 'fifo').sort((a, b) => a.physical_frames - b.physical_frames).flatMap((row, index, rows) => index && row.metrics.faults > rows[index - 1].metrics.faults ? [`${rows[index - 1].physical_frames} → ${row.physical_frames} frames: ${rows[index - 1].metrics.faults} → ${row.metrics.faults} faults`] : []) : [];

@@ -34,6 +34,8 @@ def snapshot_payload(state):
             "order": list(policy.order),
             "last_access": [{"frame_id": frame, "step": step} for frame, step in policy.last_access],
             "next_use": [{"frame_id": frame, "step": step} for frame, step in policy.next_use],
+            "hand": policy.hand,
+            "reference_bits": [{'frame_id': frame, 'referenced': referenced} for frame, referenced in policy.reference_bits],
         },
     }
 

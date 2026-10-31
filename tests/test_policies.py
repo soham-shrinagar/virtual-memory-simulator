@@ -95,7 +95,7 @@ def test_exhaustive_short_traces_against_independent_oracle():
                 config = MemoryConfig(virtual_pages=3, physical_frames=capacity)
                 faults = {policy: simulate(config, pages, policy=policy, capture_trace=False).metrics.faults for policy in POLICIES}
                 assert faults["optimal"] == optimal_oracle(pages, capacity)
-                assert faults["optimal"] <= min(faults["fifo"], faults["lru"])
+                assert faults["optimal"] <= min(faults["fifo"], faults["lru"], faults['clock'])
                 assert faults["lru"] <= previous_lru
                 assert faults["optimal"] <= previous_opt
                 previous_lru, previous_opt = faults["lru"], faults["optimal"]
