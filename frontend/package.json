@@ -10,6 +10,7 @@
     "dev": "vite",
     "build": "vite build",
     "test": "vitest",
+    "test:browser": "playwright test",
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {
@@ -17,6 +18,7 @@
     "react-dom": "19.3.1"
   },
   "devDependencies": {
+    "@playwright/test": "1.65.0",
     "@testing-library/jest-dom": "7.0.1",
     "@testing-library/react": "16.3.3",
     "@vitejs/plugin-react": "6.1.2",

@@ -198,6 +198,19 @@ This checks archive contents, installs the pinned requirements and each distribu
 
 ## Verification scope and model limits
 
+The **Linux checks** GitHub Actions workflow runs on pushes and pull requests using Ubuntu 24.04. It runs the Python and JavaScript suites, builds the production frontend, verifies fresh wheel and source installs, and tests the installed wheel in headless Chromium and Firefox. The browser tests cover address translation, keyboard and automatic playback, CLOCK with the TLB enabled, JSON download and re-import, workload generation, the Belady comparison, CSV downloads, and a narrow viewport. Browser requests to external origins are blocked during the tests.
+
+To run the browser checks locally on Ubuntu, first build and install the wheel in the release environment as shown above and install the frontend development dependencies with `npm ci`. Then run:
+
+```bash
+source .venv-release/bin/activate
+cd frontend
+npx --no-install playwright install --with-deps chromium firefox
+npm run test:browser
+```
+
+The browser runner starts and stops its own server on port 8011. The headless checks complement the manual demo on the target Linux desktop.
+
 Recorded on 31 October 2026: Ubuntu 24.04.3 x86-64 under WSL2 (kernel 5.15.167.4, Python 3.12.3) and Windows 11 (Python 3.13.1); Node 22.23.2 for builds. Both platforms passed 142 Python tests, 52 JavaScript tests, production builds, and fresh wheel/source installations. Linux shutdown with SIGINT exits cleanly. Browser checks verified real JSON/CSV downloads, restored address-mode settings, replay, and Belady's anomaly. Chromium 156.0.8078.4 rendered the application under WSLg. The full Firefox/Chromium desktop demo has not yet been completed on an independent Linux desktop/VM; do not treat WSL API/build tests as that check.
 
 Measure the bounded workload on your demo machine, with the server running:
