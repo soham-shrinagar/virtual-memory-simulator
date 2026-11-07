@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 import pytest
 
 from vmsim.core.engine import simulate
-from vmsim.core.experiments import compare, dump_experiment, load_experiment, make_experiment
+from vmsim.core.experiments import Experiment, compare, dump_experiment, experiment_payload, load_experiment, make_experiment
 from vmsim.core.models import MemoryConfig
 from vmsim.core.policies import POLICIES
 from vmsim.core.translation import normalize_and_validate
@@ -105,6 +105,21 @@ def test_v3_round_trip_and_legacy_files_preserve_reads():
     for operations in (None, [], ["write"], ["invalid"] * 4):
         with pytest.raises(ValidationError):
             load_experiment(json.dumps({**json.loads(text), "operations": operations}))
+
+
+def test_direct_experiments_normalize_writes_and_detach_mutable_inputs():
+    inferred = Experiment(MemoryConfig(), "W:0 R:1 W:0")
+    assert inferred.workload == (0, 1, 0)
+    assert inferred.operations == ("write", "read", "write")
+    assert experiment_payload(inferred)["operations"] == ["write", "read", "write"]
+    assert load_experiment(dump_experiment(inferred)) == inferred
+    workload, operations = [0, 1], ["write", "read"]
+    experiment = Experiment(MemoryConfig(), workload, operations=operations)
+    workload[0], operations[0] = 7, "read"
+    assert experiment.workload == (0, 1)
+    assert experiment.operations == ("write", "read")
+    with pytest.raises(ValidationError):
+        Experiment(MemoryConfig(), [0], operations=["invalid"])
 
 
 def test_http_import_export_replay_compare_and_invalid_operations():
