@@ -31,3 +31,15 @@ it('rejects a cached frame that disagrees with the page table and a corrupt look
   counts.events[2].state.tlb.hits = 0;
   expect(() => validateSimulation(counts)).toThrow();
 });
+
+it('compares cache contents without depending on JSON property order', () => {
+  const trace = structuredClone(contracts.tlb_simulation);
+  const { capacity, hits, misses, entries } = trace.tlb;
+  trace.tlb = { entries: entries.map(({ page, frame_id }) => ({ frame_id, page })), misses, hits, capacity };
+  expect(validateSimulation(trace)).toBe(trace);
+  trace.tlb.entries.reverse();
+  expect(() => validateSimulation(trace)).toThrow(/Unexpected TLB totals/);
+  const malformed = structuredClone(contracts.tlb_simulation);
+  malformed.events[0].state.tlb.entries = [null];
+  expect(() => validateSimulation(malformed)).toThrow(/Unexpected/);
+});

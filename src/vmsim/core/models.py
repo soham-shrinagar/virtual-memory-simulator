@@ -131,7 +131,7 @@ class Event:
 class SimulationResult:
     config: MemoryConfig
     input_mode: str
-    policy: str | None
+    policy: str
     accesses: tuple[Access, ...]
     initial_state: Snapshot
     events: tuple[Event, ...]

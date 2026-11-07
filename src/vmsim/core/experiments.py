@@ -22,6 +22,14 @@ class Experiment:
     tlb_capacity: int = 0
     operations: tuple[str, ...] | None = None
 
+    def __post_init__(self):
+        accesses = normalize_and_validate(self.config, self.workload, self.input_mode, operations=self.operations)
+        if self.policy not in POLICIES:
+            raise ValidationError("Choose fifo, lru, optimal, or clock.", "policy")
+        require_int(self.tlb_capacity, 'tlb_capacity', 0, 32)
+        object.__setattr__(self, "workload", tuple(access.input_value for access in accesses))
+        object.__setattr__(self, "operations", tuple(access.operation for access in accesses))
+
 
 @dataclass(frozen=True, slots=True)
 class ComparisonRow:
@@ -32,12 +40,7 @@ class ComparisonRow:
 
 
 def make_experiment(config, workload, input_mode="pages", policy="fifo", tlb_capacity=0, *, operations=None) -> Experiment:
-    accesses = normalize_and_validate(config, workload, input_mode, operations=operations)
-    if policy not in POLICIES:
-        raise ValidationError("Choose fifo, lru, optimal, or clock.", "policy")
-    require_int(tlb_capacity, 'tlb_capacity', 0, 32)
-    return Experiment(config, tuple(access.input_value for access in accesses), input_mode, policy, tlb_capacity,
-                      tuple(access.operation for access in accesses))
+    return Experiment(config, workload, input_mode, policy, tlb_capacity, operations)
 
 
 def experiment_payload(experiment: Experiment) -> dict:
@@ -48,15 +51,12 @@ def experiment_payload(experiment: Experiment) -> dict:
         "input_mode": experiment.input_mode,
         "policy": experiment.policy,
         "tlb_capacity": experiment.tlb_capacity,
-        "operations": list(experiment.operations) if experiment.operations is not None else ["read"] * len(experiment.workload),
+        "operations": list(experiment.operations),
     }
 
 
 def dump_experiment(experiment: Experiment) -> str:
-    # Revalidate even records constructed directly by a caller.
-    checked = make_experiment(experiment.config, experiment.workload, experiment.input_mode, experiment.policy,
-                              experiment.tlb_capacity, operations=experiment.operations)
-    return json.dumps(experiment_payload(checked), indent=2, allow_nan=False) + "\n"
+    return json.dumps(experiment_payload(experiment), indent=2, allow_nan=False) + "\n"
 
 
 def _unique_object(pairs):

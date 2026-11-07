@@ -2,7 +2,7 @@
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StrictInt, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictInt
 from vmsim.core.policies import POLICIES
 
 PolicyName = Literal['fifo', 'lru', 'optimal', 'clock']
@@ -37,23 +37,6 @@ class SimulationRequest(StrictModel):
 
 class ExperimentRequest(SimulationRequest):
     schema_version: int = Field(ge=1, le=3)
-
-    @model_validator(mode="before")
-    @classmethod
-    def require_complete_file(cls, data):
-        fields = {"schema_version", "config", "workload", "input_mode", "policy"}
-        if isinstance(data, dict) and data.get('schema_version') in (2, 3):
-            fields.add('tlb_capacity')
-        if isinstance(data, dict) and data.get('schema_version') == 3:
-            fields.add('operations')
-            if data.get('operations') is None:
-                raise ValueError("An experiment file must include an operation for every reference.")
-        if not isinstance(data, dict) or set(data) != fields:
-            raise ValueError("An experiment file must include all fields for its schema version.")
-        config = data.get("config")
-        if not isinstance(config, dict) or set(config) != {"page_size", "virtual_pages", "physical_frames"}:
-            raise ValueError("An experiment file must include all memory configuration fields.")
-        return data
 
 
 class CompareRequest(StrictModel):

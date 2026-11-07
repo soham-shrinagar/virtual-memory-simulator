@@ -60,7 +60,7 @@ function validMetrics(metrics, references) {
 }
 
 function validWorkload(data) {
-  if (!object(data) || ![1, 2, 3].includes(data.schema_version) || !validConfig(data.config) ||
+  if (!object(data) || !validConfig(data.config) ||
       !['pages', 'addresses'].includes(data.input_mode) || !Array.isArray(data.workload) ||
       data.workload.length < 1 || data.workload.length > 1000) return false;
   const upper = data.input_mode === 'pages' ? data.config.virtual_pages : data.config.page_size * data.config.virtual_pages;
@@ -82,9 +82,9 @@ function validTLB(tlb, capacity, step, config, frames = null) {
   return object(tlb) && tlb.capacity === capacity && integer(tlb.hits) && integer(tlb.misses) &&
     tlb.hits + tlb.misses === step && Array.isArray(tlb.entries) &&
     tlb.entries.length <= Math.min(capacity, config.physical_frames, step) &&
-    unique(tlb.entries.map((entry) => entry.page)) && unique(tlb.entries.map((entry) => entry.frame_id)) &&
     tlb.entries.every((entry) => object(entry) && integer(entry.page, 0, config.virtual_pages - 1) &&
-      integer(entry.frame_id, 0, config.physical_frames - 1) && (!frames || frames[entry.frame_id].page === entry.page));
+      integer(entry.frame_id, 0, config.physical_frames - 1) && (!frames || frames[entry.frame_id].page === entry.page)) &&
+    unique(tlb.entries.map((entry) => entry.page)) && unique(tlb.entries.map((entry) => entry.frame_id));
 }
 
 function validSnapshot(state, config, policy, step, tlbCapacity) {
@@ -162,7 +162,10 @@ export function validateSimulation(data) {
   requireContract(validMetrics(data.metrics, data.workload.length) &&
     ['hits', 'faults', 'replacements', 'reads', 'writes', 'writebacks'].every((key) => data.metrics[key] === previous.metrics[key]), 'simulation totals');
   requireContract(validTLB(data.tlb, data.tlb_capacity, data.workload.length, data.config, previous.frames) &&
-    JSON.stringify(data.tlb) === JSON.stringify(previous.tlb), 'TLB totals');
+    (data.tlb === null || (data.tlb.hits === previous.tlb.hits &&
+      data.tlb.entries.length === previous.tlb.entries.length &&
+      data.tlb.entries.every((entry, index) => entry.page === previous.tlb.entries[index].page &&
+        entry.frame_id === previous.tlb.entries[index].frame_id))), 'TLB totals');
   return data;
 }
 
