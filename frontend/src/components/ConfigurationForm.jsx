@@ -40,7 +40,7 @@ export default function ConfigurationForm({ draft, busy, error, onEdit, onExampl
       </select>
       <label htmlFor="workload">Memory references</label>
       <textarea id="workload" rows="4" value={draft.workload} onChange={change('workload')} maxLength="65536" aria-describedby="workload-hint" spellCheck="false" />
-      <p id="workload-hint" className="field-hint">Separate with commas or spaces. Up to 1,000 references.{maxReference !== null && <> Range: 0–{maxReference.toLocaleString('en-US')}.</>}{draft.inputMode === 'addresses' && ' Hexadecimal (0x) is also accepted.'}</p>
+      <p id="workload-hint" className="field-hint">Separate with commas or spaces. Plain numbers are reads. Use R:1 for a read or W:1 for a write. Up to 1,000 references.{maxReference !== null && <> Range: 0–{maxReference.toLocaleString('en-US')}.</>}{draft.inputMode === 'addresses' && ' Hexadecimal (0x) is also accepted.'}</p>
       {error && <p className="form-error" role="alert">{error}</p>}
       {showRun && <div className="run-actions">
         <button className="primary-button" type="submit" disabled={busy}>{busy ? 'Preparing trace…' : 'Run simulation'}</button>

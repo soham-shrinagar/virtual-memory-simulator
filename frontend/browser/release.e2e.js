@@ -44,7 +44,8 @@ test('replays address translation and restores a downloaded experiment', async (
   expect(download.suggestedFilename()).toBe('experiment.json');
   const file = await download.path();
   expect(JSON.parse(await readFile(file, 'utf8'))).toMatchObject({
-    schema_version: 2, workload: [4096, 8300, 4097], input_mode: 'addresses', policy: 'clock', tlb_capacity: 2,
+    schema_version: 3, workload: [4096, 8300, 4097], operations: ['read', 'read', 'read'],
+    input_mode: 'addresses', policy: 'clock', tlb_capacity: 2,
   });
 
   await page.getByLabel('Reference type').selectOption('pages');
@@ -92,4 +93,44 @@ test('generates references and exports a Belady sweep at a narrow viewport', asy
     ['3', '12', '3', '9'],
     ['4', '12', '2', '10'],
   ]);
+});
+
+test('restores dirty state and writebacks and saves mixed read/write references', async ({ page }) => {
+  await page.getByLabel('Physical frames').fill('1');
+  await page.getByLabel('Translation cache (TLB)').selectOption('2');
+  await page.getByLabel('Memory references').fill('W:0 R:0 1 0 W:0 W:0 2');
+  await page.getByRole('button', { name: 'Run simulation' }).click();
+  await expect(page.getByLabel('Current step')).toHaveText('0 / 7');
+  const timeline = page.getByLabel('Simulation step');
+  await timeline.press('End');
+  await expect(page.getByLabel('Writebacks', { exact: true })).toHaveText('2');
+  await expect(page.getByLabel('Writes', { exact: true })).toHaveText('3');
+  await timeline.press('Home');
+  await timeline.press('ArrowRight');
+  await timeline.press('ArrowRight');
+  await expect(page.getByTestId('frame-0')).toContainText('Dirty');
+  await expect(page.getByLabel('Writebacks', { exact: true })).toHaveText('0');
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
+  await expect(page.getByTestId('frame-0')).toContainText('Clean');
+  await expect(page.getByLabel('Writebacks', { exact: true })).toHaveText('1');
+
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: 'Save JSON' }).click(),
+  ]);
+  const file = await readFile(await download.path());
+  expect(JSON.parse(file.toString()).operations).toEqual(['write', 'read', 'read', 'read', 'write', 'write', 'read']);
+  await page.getByLabel('Memory references').fill('0');
+  await page.getByLabel('Experiment file').setInputFiles({ name: 'mixed.json', mimeType: 'application/json', buffer: file });
+  await expect(page.getByLabel('Memory references')).toHaveValue('W:0, 0, 1, 0, W:0, W:0, 2');
+  await page.getByRole('button', { name: 'compare view' }).click();
+  await page.getByLabel('From frames').fill('1');
+  await page.getByLabel('To frames').fill('1');
+  await page.getByRole('button', { name: 'Compare', exact: true }).click();
+  const table = page.getByRole('table', { name: 'Comparison results' });
+  await expect(table.getByRole('row')).toHaveCount(5);
+  const rows = await table.getByRole('row').all();
+  for (const row of rows.slice(1)) {
+    await expect(row.getByRole('cell').nth(5)).toHaveText('2');
+  }
 });

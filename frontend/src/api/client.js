@@ -50,6 +50,8 @@ function validConfig(config) {
 
 function validMetrics(metrics, references) {
   if (!object(metrics) || !integer(metrics.hits) || !integer(metrics.faults) || !integer(metrics.replacements) ||
+      !integer(metrics.reads) || !integer(metrics.writes) || !integer(metrics.writebacks) ||
+      metrics.reads + metrics.writes !== references || metrics.writebacks > Math.min(metrics.replacements, metrics.writes) ||
       metrics.references !== references || metrics.hits + metrics.faults !== references || metrics.replacements > metrics.faults) return false;
   if (references === 0) return metrics.hit_rate === null && metrics.fault_rate === null;
   return Number.isFinite(metrics.hit_rate) && Number.isFinite(metrics.fault_rate) &&
@@ -58,11 +60,16 @@ function validMetrics(metrics, references) {
 }
 
 function validWorkload(data) {
-  if (!object(data) || ![1, 2].includes(data.schema_version) || !validConfig(data.config) ||
+  if (!object(data) || ![1, 2, 3].includes(data.schema_version) || !validConfig(data.config) ||
       !['pages', 'addresses'].includes(data.input_mode) || !Array.isArray(data.workload) ||
       data.workload.length < 1 || data.workload.length > 1000) return false;
   const upper = data.input_mode === 'pages' ? data.config.virtual_pages : data.config.page_size * data.config.virtual_pages;
   return data.workload.every((value) => integer(value, 0, upper - 1));
+}
+
+function validOperations(data) {
+  return Array.isArray(data.operations) && data.operations.length === data.workload.length &&
+    data.operations.every((operation) => ['read', 'write'].includes(operation));
 }
 
 function validDerivedConfig(config) {
@@ -84,7 +91,9 @@ function validSnapshot(state, config, policy, step, tlbCapacity) {
   if (!object(state) || state.step !== step || !validMetrics(state.metrics, step) ||
       !Array.isArray(state.frames) || state.frames.length !== config.physical_frames) return false;
   if (!state.frames.every((frame, index) => object(frame) && frame.frame_id === index &&
+      typeof frame.dirty === 'boolean' && (frame.page !== null || !frame.dirty) &&
       (frame.page === null || integer(frame.page, 0, config.virtual_pages - 1)))) return false;
+  if (state.frames.filter((frame) => frame.dirty).length + state.metrics.writebacks > state.metrics.writes) return false;
   if (!validTLB(state.tlb, tlbCapacity, step, config, state.frames)) return false;
   const occupied = state.frames.filter((frame) => frame.page !== null);
   const ids = occupied.map((frame) => frame.frame_id);
@@ -110,7 +119,7 @@ function validSnapshot(state, config, policy, step, tlbCapacity) {
 }
 
 export function validateSimulation(data) {
-  requireContract(validWorkload(data) && data.schema_version === 1 && integer(data.tlb_capacity, 0, 32) && policies.includes(data.policy) && validDerivedConfig(data.config), 'simulation');
+  requireContract(validWorkload(data) && validOperations(data) && data.schema_version === 1 && integer(data.tlb_capacity, 0, 32) && policies.includes(data.policy) && validDerivedConfig(data.config), 'simulation');
   requireContract(validSnapshot(data.initial_state, data.config, data.policy, 0, data.tlb_capacity) &&
     Array.isArray(data.events) && data.events.length === data.workload.length, 'simulation');
   let previous = data.initial_state;
@@ -121,6 +130,7 @@ export function validateSimulation(data) {
     const page = Math.floor(address / config.page_size);
     const offset = address % config.page_size;
     requireContract(object(event) && event.step === index + 1 && event.input_value === value &&
+      event.operation === data.operations[index] && typeof event.writeback === 'boolean' &&
       event.virtual_address === address && event.page === page && event.offset === offset &&
       ['hit', 'fault'].includes(event.result) && integer(event.frame_id, 0, config.physical_frames - 1) &&
       (event.victim_page === null || integer(event.victim_page, 0, config.virtual_pages - 1)) &&
@@ -133,31 +143,41 @@ export function validateSimulation(data) {
         event.state.tlb.misses === previous.tlb.misses + Number(!cached), 'TLB event');
     } else requireContract(event.tlb_result === null, 'TLB event');
     const hit = previous.frames.some((frame) => frame.page === page);
+    const writing = event.operation === 'write';
+    const evictedDirty = event.victim_page !== null && previous.frames[event.frame_id].dirty;
     requireContract(event.result === (hit ? 'hit' : 'fault') &&
       event.state.frames[event.frame_id].page === page && event.physical_address === event.frame_id * config.page_size + offset &&
       event.state.metrics.hits === previous.metrics.hits + Number(hit) &&
       event.state.metrics.faults === previous.metrics.faults + Number(!hit) &&
       event.state.metrics.replacements === previous.metrics.replacements + Number(event.victim_page !== null) &&
+      event.writeback === evictedDirty &&
+      event.state.metrics.reads === previous.metrics.reads + Number(!writing) &&
+      event.state.metrics.writes === previous.metrics.writes + Number(writing) &&
+      event.state.metrics.writebacks === previous.metrics.writebacks + Number(evictedDirty) &&
+      event.state.frames.every((frame, id) => frame.dirty === (id === event.frame_id
+        ? writing || (hit && previous.frames[id].dirty) : previous.frames[id].dirty)) &&
       (event.victim_page === null || (!hit && previous.frames[event.frame_id].page === event.victim_page)), 'simulation event');
     previous = event.state;
   });
   requireContract(validMetrics(data.metrics, data.workload.length) &&
-    ['hits', 'faults', 'replacements'].every((key) => data.metrics[key] === previous.metrics[key]), 'simulation totals');
+    ['hits', 'faults', 'replacements', 'reads', 'writes', 'writebacks'].every((key) => data.metrics[key] === previous.metrics[key]), 'simulation totals');
   requireContract(validTLB(data.tlb, data.tlb_capacity, data.workload.length, data.config, previous.frames) &&
     JSON.stringify(data.tlb) === JSON.stringify(previous.tlb), 'TLB totals');
   return data;
 }
 
 export function validateComparison(data) {
-  requireContract(validWorkload(data) && data.schema_version === 1 && integer(data.tlb_capacity, 0, 32) && validDerivedConfig(data.config) && Array.isArray(data.policies) &&
+  requireContract(validWorkload(data) && validOperations(data) && data.schema_version === 1 && integer(data.tlb_capacity, 0, 32) && validDerivedConfig(data.config) && Array.isArray(data.policies) &&
     data.policies.length >= 1 && data.policies.length <= policies.length && unique(data.policies) && data.policies.every((policy) => policies.includes(policy)) &&
     Array.isArray(data.frame_counts) && data.frame_counts.length >= 1 && data.frame_counts.length <= 32 && unique(data.frame_counts) &&
     data.frame_counts.every((count) => integer(count, 1, 32)) && Array.isArray(data.rows) &&
     data.rows.length === data.frame_counts.length * data.policies.length, 'comparison');
   const keys = [];
+  const writes = data.operations.filter((operation) => operation === 'write').length;
   for (const row of data.rows) {
     requireContract(object(row) && data.policies.includes(row.policy) && data.frame_counts.includes(row.physical_frames) &&
       validMetrics(row.metrics, data.workload.length) &&
+      row.metrics.writes === writes &&
       row.metrics.faults - row.metrics.replacements <= Math.min(row.physical_frames, data.config.virtual_pages), 'comparison row');
     requireContract(validTLB(row.tlb, data.tlb_capacity, data.workload.length, { ...data.config, physical_frames: row.physical_frames }), 'comparison TLB');
     keys.push(`${row.policy}/${row.physical_frames}`);
@@ -167,7 +187,7 @@ export function validateComparison(data) {
 }
 
 function validateExperiment(data) {
-  requireContract(validWorkload(data) && data.schema_version === 2 && integer(data.tlb_capacity, 0, 32) && policies.includes(data.policy), 'experiment');
+  requireContract(validWorkload(data) && validOperations(data) && data.schema_version === 3 && integer(data.tlb_capacity, 0, 32) && policies.includes(data.policy), 'experiment');
   return data;
 }
 

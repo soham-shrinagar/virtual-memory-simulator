@@ -20,7 +20,7 @@ def test_json_round_trip_preserves_addresses_policy_and_results():
 
 
 @pytest.mark.parametrize("change", [
-    {"schema_version": 3}, {"schema_version": True}, {"extra": 1},
+    {"schema_version": 4}, {"schema_version": True}, {"extra": 1},
     {"workload": [True]}, {"input_mode": "guess"}, {"policy": "random"},
     {"config": {"page_size": 4096}},
 ])
@@ -70,6 +70,9 @@ def test_invalid_comparison_options(options):
 
 def test_example_files_are_valid_reproducible_experiments():
     root = Path(__file__).resolve().parents[1]
-    for name, faults in (("fifo", 5), ("belady", 9), ("translation", 2)):
+    for name, faults in (("fifo", 5), ("belady", 9), ("translation", 2), ("dirty-pages", 4)):
         experiment = load_experiment((root / "examples" / f"{name}.json").read_text())
-        assert simulate(experiment.config, experiment.workload, experiment.input_mode, experiment.policy).metrics.faults == faults
+        result = simulate(experiment.config, experiment.workload, experiment.input_mode, experiment.policy,
+                          tlb_capacity=experiment.tlb_capacity, operations=experiment.operations)
+        assert result.metrics.faults == faults
+        assert result.metrics.writebacks == (2 if name == "dirty-pages" else 0)

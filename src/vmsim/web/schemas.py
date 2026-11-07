@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, StrictInt, model_validator
 from vmsim.core.policies import POLICIES
 
 PolicyName = Literal['fifo', 'lru', 'optimal', 'clock']
+Operation = Literal['read', 'write']
 
 
 class HealthResponse(BaseModel):
@@ -31,17 +32,22 @@ class SimulationRequest(StrictModel):
     input_mode: Literal["pages", "addresses"] = "pages"
     policy: PolicyName = "fifo"
     tlb_capacity: int = Field(default=0, ge=0, le=32)
+    operations: list[Operation] | None = None
 
 
 class ExperimentRequest(SimulationRequest):
-    schema_version: int = Field(ge=1, le=2)
+    schema_version: int = Field(ge=1, le=3)
 
     @model_validator(mode="before")
     @classmethod
     def require_complete_file(cls, data):
         fields = {"schema_version", "config", "workload", "input_mode", "policy"}
-        if isinstance(data, dict) and data.get('schema_version') == 2:
+        if isinstance(data, dict) and data.get('schema_version') in (2, 3):
             fields.add('tlb_capacity')
+        if isinstance(data, dict) and data.get('schema_version') == 3:
+            fields.add('operations')
+            if data.get('operations') is None:
+                raise ValueError("An experiment file must include an operation for every reference.")
         if not isinstance(data, dict) or set(data) != fields:
             raise ValueError("An experiment file must include all fields for its schema version.")
         config = data.get("config")
@@ -55,6 +61,7 @@ class CompareRequest(StrictModel):
     workload: str | list[StrictInt]
     input_mode: Literal["pages", "addresses"] = "pages"
     tlb_capacity: int = Field(default=0, ge=0, le=32)
+    operations: list[Operation] | None = None
     policies: list[PolicyName] = Field(default_factory=lambda: list(POLICIES), min_length=1, max_length=len(POLICIES))
     frame_counts: list[StrictInt] | None = Field(default=None, min_length=1, max_length=32)
 
@@ -78,6 +85,9 @@ class MetricsResponse(StrictModel):
     hits: int
     faults: int
     replacements: int
+    reads: int
+    writes: int
+    writebacks: int
     hit_rate: float | None
     fault_rate: float | None
 
@@ -85,6 +95,7 @@ class MetricsResponse(StrictModel):
 class FrameResponse(StrictModel):
     frame_id: int
     page: int | None
+    dirty: bool
 
 
 class ResidentResponse(StrictModel):
@@ -140,6 +151,8 @@ class EventResponse(StrictModel):
     reason: str
     state: SnapshotResponse
     tlb_result: Literal['hit', 'miss'] | None
+    operation: Operation
+    writeback: bool
 
 
 class SimulationResponse(StrictModel):
@@ -148,6 +161,7 @@ class SimulationResponse(StrictModel):
     input_mode: Literal["pages", "addresses"]
     policy: PolicyName
     workload: list[int]
+    operations: list[Operation]
     initial_state: SnapshotResponse
     events: list[EventResponse]
     metrics: MetricsResponse
@@ -167,6 +181,7 @@ class ComparisonResponse(StrictModel):
     config: ConfigResponse
     input_mode: Literal["pages", "addresses"]
     workload: list[int]
+    operations: list[Operation]
     policies: list[str]
     frame_counts: list[int]
     rows: list[ComparisonRowResponse]

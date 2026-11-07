@@ -20,7 +20,8 @@ def require_int(value: object, field: str, minimum: int, maximum: int) -> int:
     return value
 
 
-def parse_workload(workload: str | Sequence[int], input_mode: str) -> tuple[int, ...]:
+def parse_workload(workload: str | Sequence[int], input_mode: str, operations=None):
+    """Return (value, operation) pairs, preserving one-based token errors."""
     if input_mode not in ("pages", "addresses"):
         raise ValidationError("Choose pages or addresses.", "input_mode")
     if isinstance(workload, str):
@@ -36,18 +37,38 @@ def parse_workload(workload: str | Sequence[int], input_mode: str) -> tuple[int,
         if len(tokens) > MAX_REFERENCES:
             raise ValidationError(f"At most {MAX_REFERENCES} references are supported.")
         values = []
+        parsed_operations = []
+        explicit = []
         for position, token in enumerate(tokens, 1):
+            prefixed = token[:2].upper() in ("R:", "W:")
+            operation = "write" if token[:2].upper() == "W:" else "read"
+            if prefixed:
+                token = token[2:]
             decimal = re.fullmatch(r"[0-9]+", token)
             hexadecimal = input_mode == "addresses" and re.fullmatch(r"0[xX][0-9a-fA-F]+", token)
             if len(token) > 64 or not (decimal or hexadecimal):
                 raise ValidationError("Expected a nonnegative decimal integer" + (" or 0x hexadecimal address." if input_mode == "addresses" else "."), token_index=position)
             values.append(int(token, 16 if hexadecimal else 10))
-        return tuple(values)
-    if not isinstance(workload, (list, tuple)):
-        raise ValidationError("Workload must be text or an array of integers.")
-    if not 1 <= len(workload) <= MAX_REFERENCES:
-        raise ValidationError(f"Supply between 1 and {MAX_REFERENCES} references.")
-    for position, value in enumerate(workload, 1):
-        if type(value) is not int or value < 0:
-            raise ValidationError("Expected a nonnegative integer.", token_index=position)
-    return tuple(workload)
+            parsed_operations.append(operation)
+            explicit.append(prefixed)
+    else:
+        if not isinstance(workload, (list, tuple)):
+            raise ValidationError("Workload must be text or an array of integers.")
+        if not 1 <= len(workload) <= MAX_REFERENCES:
+            raise ValidationError(f"Supply between 1 and {MAX_REFERENCES} references.")
+        for position, value in enumerate(workload, 1):
+            if type(value) is not int or value < 0:
+                raise ValidationError("Expected a nonnegative integer.", token_index=position)
+        values = workload
+        parsed_operations = ["read"] * len(values)
+        explicit = [False] * len(values)
+    if operations is not None:
+        if not isinstance(operations, (list, tuple)) or len(operations) != len(values):
+            raise ValidationError("Supply one operation for each reference.", "operations")
+        for position, operation in enumerate(operations, 1):
+            if operation not in ("read", "write"):
+                raise ValidationError("Choose read or write.", "operations", position)
+            if explicit[position - 1] and operation != parsed_operations[position - 1]:
+                raise ValidationError("Operation conflicts with the reference prefix.", "operations", position)
+        parsed_operations = operations
+    return tuple(zip(values, parsed_operations))

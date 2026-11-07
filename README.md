@@ -41,6 +41,18 @@ Select **Compare**, choose an inclusive frame range (1–32), then **Compare**. 
 
 CLOCK approximates recency and is distinct from exact LRU. It is an online teaching policy, not a claim about Linux reclaim. All four policies are included in comparison sweeps (up to 128 fresh runs). `examples/clock.json` demonstrates a complete scan and second chances with TLB enabled. The Belady workload produces CLOCK faults 9 and 10 at three and four frames, respectively.
 
+## Reads, writes, and dirty pages
+
+Plain numbers are reads. Prefix an individual reference with `R:` or `W:` to select a read or write, for example `W:0 R:0 1 0 W:0 W:0 2`. Prefixes are case-insensitive and attach directly to the number. Address mode also accepts prefixed hexadecimal addresses such as `W:0x1001`. Generated workloads contain reads. Add write prefixes in the editor to create a mixed workload.
+
+Every nonresident access loads the page, including a write fault. Loads start clean, and a completed write marks that frame dirty. Reads preserve the dirty bit. A dirty eviction counts one writeback before reusing the frame, regardless of how many writes dirtied the page. Clean evictions count zero writebacks. A later read reloads the evicted page clean. Dirty pages still resident at the end are retained, so the totals include eviction writebacks only.
+
+The selected-step counters show reads, writes, and writebacks. Frame cards and the page table show dirty state, and reference history records each operation and writeback. Backward playback restores all of them. Each policy/frame-count comparison starts with clean empty frames and reports its writebacks in the table and CSV. All policies retain their existing victim rules. Optimal minimizes faults using future references and does not optimize writeback counts.
+
+`examples/dirty-pages.json` runs the seven references above with one frame and a two-entry TLB. It produces 4 reads, 3 writes, 4 faults, 3 hits, 3 replacements, and 2 writebacks. Repeated cached writes still mark the page dirty. The simulated backing store always completes writeback successfully. The model tracks dirty state and counts, without storing page contents or assigning an I/O duration.
+
+API callers may send the same prefixed text, or a numeric `workload` array accompanied by `operations: ["write", "read", ...]`. The operations array must match the workload length and contain only `read` or `write`. Omit it for all reads. Conflicting text prefixes and explicit operations are rejected.
+
 ## Seeded workloads
 
 Expand **Generate references**, choose a seed (0–4294967295), count (1–1000), and profile, then select **Generate workload**. This replaces the editor and clears its previous trace. It uses the configured virtual pages and input mode; addresses preserve the same generated page sequence with independently seeded byte offsets.
@@ -59,7 +71,7 @@ Set **Translation cache (TLB)** to 1–32 entries, or leave it **Disabled**. Thi
 
 The TLB starts empty on every run. Its capacity may exceed the physical frame count. It never changes page-fault/replacement decisions for the same workload and memory policy. Comparison and CSV include separate cache counters when enabled; no hardware timing formula is implied. Send `tlb_capacity: 0` (disabled, default) or an integer 1–32 to the simulation, comparison, and experiment-export APIs.
 
-New experiment exports use **schema version 2**, including `tlb_capacity`. Version 1 files remain importable and explicitly mean TLB disabled. Import normalizes them to version 2. Trace/comparison responses retain schema version 1 with additive TLB fields: per-state/final `tlb` (null when disabled), `tlb_capacity`, and per-event `tlb_result` (hit/miss/null).
+New experiment exports use **schema version 3**, including `tlb_capacity` and an `operations` array aligned with the numeric workload. Version 1 and 2 files remain importable as all-read workloads. Version 1 means TLB disabled. Import normalizes all files to version 3. Trace/comparison responses retain schema version 1 with additive fields. Per-state/final `tlb` is null when disabled, `tlb_capacity` describes capacity, and per-event `tlb_result` is hit/miss/null.
 
 ## Simulation API
 
@@ -71,7 +83,7 @@ Run the local server, then send JSON to these routes:
 | `POST /api/simulate` | Full initial state, immutable events, and final metrics |
 | `POST /api/compare` | Fresh summary runs for each policy/frame-count pair |
 | `POST /api/workloads/generate` | Reproducible uniform, sequential, or locality references |
-| `POST /api/experiments/export` | Download a canonical schema-version-2 experiment |
+| `POST /api/experiments/export` | Download a canonical schema-version-3 experiment |
 | `POST /api/experiments/import` | Validate and normalize a complete versioned experiment |
 
 Example simulation request:
@@ -91,9 +103,11 @@ Workload may be text or an integer array. Limits: 1–1000 references; 1–256 v
 
 Response schema version is 1. Config responses include byte capacities and offset bits. Each event contains the input value, split address, hit/fault result, resolved physical address, optional victim, reason, frame state, policy metadata, and cumulative metrics. Snapshot `resident_pages` lists only resident mappings; all other virtual pages are nonresident. FIFO/LRU `order` lists frame IDs from oldest to newest; LRU `last_access` and Optimal `next_use` use one-based access steps. A null Optimal next use means never used again. Zero-reference rates in the initial state are null.
 
+Simulation/comparison responses include `operations` aligned with `workload`. Simulation events carry `operation` and Boolean `writeback`. Each frame carries Boolean `dirty`, including false for empty frames. Metrics add `reads`, `writes`, and `writebacks`. Reads plus writes equal references, and writebacks never exceed replacements. Comparisons retain summary metrics without trace snapshots. CSV appends reads, writes, and writebacks after the existing columns.
+
 The JavaScript client in `frontend/src/api/client.js` provides `getHealth`, `simulateExperiment`, `compareAlgorithms`, `generateWorkload`, `exportExperiment`, and `importExperiment`, with an optional AbortSignal. It validates response structure and consistency and exposes structured HTTP failures as `ApiError`. Python API tests keep shared JSON fixtures synchronized with the JavaScript contract tests.
 
-Example files in `examples/` cover FIFO, Belady's anomaly, address offsets, TLB caching, and CLOCK. To run a saved experiment without HTTP:
+Example files in `examples/` cover FIFO, Belady's anomaly, address offsets, TLB caching, CLOCK, and dirty writebacks. To run a saved experiment without HTTP:
 
 ```python
 from pathlib import Path
@@ -103,10 +117,11 @@ experiment = load_experiment(Path("examples/translation.json").read_text(encodin
 result = simulate(
     experiment.config, experiment.workload, experiment.input_mode, experiment.policy,
     tlb_capacity=experiment.tlb_capacity,
+    operations=experiment.operations,
 )
 ```
 
-`dump_experiment` serializes validated experiments for repeatable JSON round-trips. Experiment files require schema_version, all three config values, workload, input_mode, and policy; version 2 additionally requires tlb_capacity. CLOCK experiments use version 2. Import validation does not execute a simulation.
+`dump_experiment` serializes validated experiments for repeatable JSON round-trips. Experiment files require schema_version, all three config values, workload, input_mode, and policy. Versions 2 and 3 additionally require tlb_capacity. Version 3 also requires operations. CLOCK requires version 2 or 3. Import validation does not execute a simulation.
 
 ## Requirements
 
@@ -198,7 +213,7 @@ This checks archive contents, installs the pinned requirements and each distribu
 
 ## Verification scope and model limits
 
-The **Linux checks** GitHub Actions workflow runs on pushes and pull requests using Ubuntu 24.04. It runs the Python and JavaScript suites, builds the production frontend, verifies fresh wheel and source installs, and tests the installed wheel in headless Chromium and Firefox. The browser tests cover address translation, keyboard and automatic playback, CLOCK with the TLB enabled, JSON download and re-import, workload generation, the Belady comparison, CSV downloads, and a narrow viewport. Browser requests to external origins are blocked during the tests.
+The **Linux checks** GitHub Actions workflow runs on pushes and pull requests using Ubuntu 24.04. It runs the Python and JavaScript suites, builds the production frontend, verifies fresh wheel and source installs, and tests the installed wheel in headless Chromium and Firefox. The browser tests cover address translation, keyboard and automatic playback, CLOCK with the TLB enabled, JSON download and re-import, workload generation, dirty bits and writebacks, the Belady comparison, CSV downloads, and a narrow viewport. Browser requests to external origins are blocked during the tests.
 
 To run the browser checks locally on Ubuntu, first build and install the wheel in the release environment as shown above and install the frontend development dependencies with `npm ci`. Then run:
 
@@ -221,7 +236,7 @@ Measure the bounded workload on your demo machine, with the server running:
 
 The script uses 1,000 references, 256 virtual pages, 32 frames, and a sweep of all 128 policy/frame pairs. It reports warmed repetitions (default five) with median and maximum times, separating engine/JSON work from HTTP. On 31 October, three measured repetitions with `--tlb-capacity 32` gave HTTP Optimal median **0.64 seconds** (max 0.72) and the full four-policy comparison median **2.03 seconds** (max 2.63). Engine + JSON medians were 0.12/0.13/0.11/0.15 seconds for FIFO/LRU/Optimal/CLOCK. These are reference-machine measurements, not guarantees under contention. Browser rendering/control latency is excluded.
 
-The model uses one process, a flat page table, and successful abstract page loads. It does not manipulate Linux memory, access swap, emulate dirty writeback/permissions/multilevel paging, or measure hardware timing. LRU is exact simulated recency; Optimal uses future knowledge. TLB, CLOCK, and seeded synthetic workloads are optional teaching extensions, now included. No hardware timing or effective-access-time model is claimed.
+The model uses one process, a flat page table, successful abstract page loads, and successful abstract dirty writebacks. It does not manipulate Linux memory, access swap, store page contents, emulate permissions/multilevel paging, or measure hardware timing. LRU is exact simulated recency; Optimal uses future knowledge. TLB, CLOCK, seeded synthetic workloads, and read/write references are included teaching extensions. No hardware timing or effective-access-time model is claimed.
 
 Suggested 5–7 minute demo: run the default FIFO workload (5 faults, 2 hits); inspect a load, hit, and replacement; step backward/reset/replay; use address inputs `4096,8300,4097` to explain offsets; compare all policies; load Belady's preset (FIFO 9→10 faults for 3→4 frames); export CSV and save/load JSON. Repeat this flow in Firefox and Chromium on the target Linux desktop, check keyboard controls/narrow screens, and stop the server with Ctrl+C.
 

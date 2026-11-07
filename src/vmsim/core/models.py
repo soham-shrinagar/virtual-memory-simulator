@@ -37,12 +37,14 @@ class Access:
     virtual_address: int
     page: int
     offset: int
+    operation: str = "read"
 
 
 @dataclass(frozen=True, slots=True)
 class Frame:
     frame_id: int
     page: int | None = None
+    dirty: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -60,6 +62,9 @@ class Metrics:
     hits: int = 0
     faults: int = 0
     replacements: int = 0
+    reads: int = 0
+    writes: int = 0
+    writebacks: int = 0
 
     @property
     def references(self) -> int:
@@ -119,6 +124,7 @@ class Event:
     reason: str
     state: Snapshot
     tlb_result: str | None = None
+    writeback: bool = False
 
 
 @dataclass(frozen=True, slots=True)

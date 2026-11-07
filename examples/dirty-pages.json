@@ -1,0 +1,13 @@
+{
+  "schema_version": 3,
+  "config": {
+    "page_size": 4096,
+    "virtual_pages": 8,
+    "physical_frames": 1
+  },
+  "workload": [0, 0, 1, 0, 0, 0, 2],
+  "operations": ["write", "read", "read", "read", "write", "write", "read"],
+  "input_mode": "pages",
+  "policy": "fifo",
+  "tlb_capacity": 2
+}

@@ -76,6 +76,7 @@ def test_versioned_experiments_and_http_cache_contract():
     legacy = json.loads(dump_experiment(experiment))
     legacy['schema_version'] = 1
     del legacy['tlb_capacity']
+    del legacy['operations']
     assert load_experiment(json.dumps(legacy)).tlb_capacity == 0
     with TestClient(create_app()) as client:
         request = {'workload': [0, 1, 0], 'tlb_capacity': 2}
@@ -83,7 +84,7 @@ def test_versioned_experiments_and_http_cache_contract():
         assert trace['tlb']['hits'] == 1
         assert trace['events'][2]['tlb_result'] == 'hit'
         exported = client.post('/api/experiments/export', json=request).json()
-        assert exported['schema_version'] == 2
+        assert exported['schema_version'] == 3
         assert client.post('/api/experiments/import', json=exported).json() == exported
         assert client.post('/api/experiments/import', json=legacy).json()['tlb_capacity'] == 0
         assert client.post('/api/simulate', json={**request, 'tlb_capacity': True}).status_code == 422

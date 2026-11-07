@@ -8,6 +8,8 @@ function MetricsPanel({ metrics }) {
     {[['References', metrics.references], ['Hits', metrics.hits], ['Faults', metrics.faults], ['Replacements', metrics.replacements]].map(([label, value]) =>
       <div key={label}><span>{label}</span><output aria-label={label}>{value}</output></div>)}
     <p>Hit rate <strong>{rate(metrics.hit_rate)}</strong><span>·</span>Fault rate <strong>{rate(metrics.fault_rate)}</strong></p>
+    <p>{[['Reads', metrics.reads], ['Writes', metrics.writes], ['Writebacks', metrics.writebacks]].map(([label, value]) =>
+      <span key={label}>{label} <output aria-label={label}>{value}</output></span>)}</p>
   </section>;
 }
 
@@ -15,8 +17,9 @@ function FrameView({ snapshot, event }) {
   return <ul className="frames" aria-label="Physical frames">{snapshot.frames.map((frame) => {
     const selected = event?.frame_id === frame.frame_id;
     const action = selected ? (event.result === 'hit' ? 'Hit' : event.victim_page !== null ? `Replaced P${event.victim_page}` : 'Loaded') : '';
-    return <li key={frame.frame_id} className={`frame ${selected ? event.result : ''}`} data-testid={`frame-${frame.frame_id}`} aria-label={`Frame ${frame.frame_id}, ${frame.page === null ? 'empty' : `page ${frame.page}`}${action ? `, ${action}` : ''}`}>
-      <span className="frame-label">F{frame.frame_id}</span><strong>{frame.page === null ? '—' : `P${frame.page}`}</strong><span className="frame-action">{action || (frame.page === null ? 'Empty' : 'Resident')}</span>
+    const dirtyLabel = frame.page === null ? '' : (frame.dirty ? ' · Dirty' : ' · Clean');
+    return <li key={frame.frame_id} className={`frame ${selected ? event.result : ''}`} data-testid={`frame-${frame.frame_id}`} aria-label={`Frame ${frame.frame_id}, ${frame.page === null ? 'empty' : `page ${frame.page}`}${action ? `, ${action}` : ''}${dirtyLabel}`}>
+      <span className="frame-label">F{frame.frame_id}</span><strong>{frame.page === null ? '—' : `P${frame.page}`}</strong><span className="frame-action">{action || (frame.page === null ? 'Empty' : 'Resident')}{dirtyLabel}</span>
     </li>;
   })}</ul>;
 }
@@ -36,9 +39,9 @@ function PageTable({ snapshot, config, event }) {
   const mapping = new Map(snapshot.resident_pages.map((entry) => [entry.page, entry.frame_id]));
   return <section className="panel detail-panel" aria-labelledby="page-table-title">
     <div className="section-heading"><h2 id="page-table-title">Page table</h2><span className="small-note">{mapping.size} / {config.virtual_pages} resident</span></div>
-    <div className="table-scroll page-table-scroll"><table aria-label="Page table"><thead><tr><th>Page</th><th>State</th><th>Frame</th></tr></thead><tbody>
+    <div className="table-scroll page-table-scroll"><table aria-label="Page table"><thead><tr><th>Page</th><th>State</th><th>Frame</th><th>Dirty</th></tr></thead><tbody>
       {Array.from({ length: config.virtual_pages }, (_, page) => <tr key={page} className={event?.page === page ? 'current-row' : ''}>
-        <td>P{page}</td><td>{mapping.has(page) ? 'Resident' : <span className="muted">Not resident</span>}</td><td>{mapping.has(page) ? `F${mapping.get(page)}` : '—'}</td>
+        <td>P{page}</td><td>{mapping.has(page) ? 'Resident' : <span className="muted">Not resident</span>}</td><td>{mapping.has(page) ? `F${mapping.get(page)}` : '—'}</td><td>{mapping.has(page) ? snapshot.frames[mapping.get(page)].dirty ? 'Yes' : 'No' : '—'}</td>
       </tr>)}
     </tbody></table></div>
   </section>;
@@ -66,9 +69,9 @@ function History({ trace, cursor, onSeek }) {
   return <section className="panel history-panel" aria-labelledby="history-title">
     <div className="section-heading"><h2 id="history-title">Reference history</h2><span className="small-note">{cursor ? `Steps ${start + 1}–${cursor}` : 'No completed references'}</span></div>
     {cursor === 0 ? <p className="muted-note">Completed references appear here. Select a step to revisit its state.</p> :
-      <div className="table-scroll"><table aria-label="Reference history"><thead><tr><th>Step</th><th>Page</th><th>Result</th><th>Frame</th><th>Evicted</th><th>Physical address</th></tr></thead><tbody>
+      <div className="table-scroll"><table aria-label="Reference history"><thead><tr><th>Step</th><th>Operation</th><th>Page</th><th>Result</th><th>Frame</th><th>Evicted</th><th>Writeback</th><th>Physical address</th></tr></thead><tbody>
         {visible.map((event) => <tr key={event.step} className={event.step === cursor ? 'current-row' : ''}>
-          <td><button className="step-link" onClick={() => onSeek(event.step)} aria-label={`Go to step ${event.step}`}>{event.step}</button></td><td>P{event.page}</td><td><span className={`result-text ${event.result}`}>{event.result === 'hit' ? 'Hit' : 'Fault'}</span></td><td>F{event.frame_id}</td><td>{event.victim_page === null ? '—' : `P${event.victim_page}`}</td><td>{event.physical_address.toLocaleString('en-US')}</td>
+          <td><button className="step-link" onClick={() => onSeek(event.step)} aria-label={`Go to step ${event.step}`}>{event.step}</button></td><td>{event.operation === 'write' ? 'Write' : 'Read'}</td><td>P{event.page}</td><td><span className={`result-text ${event.result}`}>{event.result === 'hit' ? 'Hit' : 'Fault'}</span></td><td>F{event.frame_id}</td><td>{event.victim_page === null ? '—' : `P${event.victim_page}`}</td><td>{event.writeback ? 'Yes' : '—'}</td><td>{event.physical_address.toLocaleString('en-US')}</td>
         </tr>)}
       </tbody></table></div>}
     {cursor > 12 && <p className="field-hint history-hint">Showing the latest 12 completed references. Use the timeline to reach any step.</p>}
@@ -100,9 +103,9 @@ export default function SimulationView({ trace, busy, playback }) {
       <div className="section-heading memory-heading"><div><h2 id="memory-title">Physical memory</h2><span className="small-note">{trace.config.physical_frames} frames · {policyNames[trace.policy]}</span></div><span className={`result-badge ${event?.result ?? ''}`}>{event ? event.result === 'hit' ? 'Page hit' : 'Page fault' : 'Initial state'}</span></div>
       <MetricsPanel metrics={snapshot.metrics} />
       <FrameView snapshot={snapshot} event={event} />
-      <p className="event-explanation" role="status">{event ? event.reason : 'All frames are empty. Advance to the first reference.'}</p>
+      <p className="event-explanation" role="status">{event ? `${event.operation === 'write' ? 'Write' : 'Read'} P${event.page}. ${event.reason}` : 'All frames are empty. Advance to the first reference.'}</p>
       <PlaybackControls playback={playback} />
-      <div className="trace-summary"><span>{next ? `Next: ${trace.input_mode === 'pages' ? `P${next.page}` : `address ${next.virtual_address.toLocaleString('en-US')}`}` : 'End of trace'}</span><span>Run totals: {trace.metrics.faults} {trace.metrics.faults === 1 ? 'fault' : 'faults'} · {trace.metrics.hits} {trace.metrics.hits === 1 ? 'hit' : 'hits'}</span></div>
+      <div className="trace-summary"><span>{next ? `Next: ${next.operation} ${trace.input_mode === 'pages' ? `P${next.page}` : `address ${next.virtual_address.toLocaleString('en-US')}`}` : 'End of trace'}</span><span>Run totals: {trace.metrics.faults} {trace.metrics.faults === 1 ? 'fault' : 'faults'} · {trace.metrics.hits} {trace.metrics.hits === 1 ? 'hit' : 'hits'} · {trace.metrics.writebacks} writebacks</span></div>
       <AddressBreakdown event={event} config={trace.config} />
     </section>
     <div className="detail-grid"><PageTable snapshot={snapshot} config={trace.config} event={event} /><PolicyState snapshot={snapshot} policy={trace.policy} /></div>

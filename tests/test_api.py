@@ -119,6 +119,8 @@ def contract_payloads(client):
         "tlb_simulation": client.post('/api/simulate', json={**request, 'policy': 'lru', 'tlb_capacity': 2}).json(),
         "generated_workload": client.post('/api/workloads/generate', json={'seed': 42, 'length': 5, 'profile': 'uniform'}).json(),
         "clock_simulation": client.post('/api/simulate', json={'workload': [0, 1, 2, 0, 3, 1, 4], 'policy': 'clock', 'tlb_capacity': 2}).json(),
+        "dirty_simulation": client.post('/api/simulate', json={'config': {'physical_frames': 1},
+            'workload': 'W:0 R:0 1 0 W:0 W:0 2', 'tlb_capacity': 2}).json(),
     }
 
 

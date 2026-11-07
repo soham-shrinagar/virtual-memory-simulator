@@ -39,8 +39,10 @@ it('loads the Belady preset and reports the 9 to 10 fault increase', async () =>
     data.rows.forEach((row, index) => {
       const faults = [9,10,7,9,10,8,6,10][index];
       row.physical_frames = index < 4 ? 3 : 4;
-      row.metrics = { references: 12, faults, hits: 12-faults, replacements: faults-row.physical_frames, hit_rate: (12-faults)/12, fault_rate: faults/12 };
+      row.metrics = { references: 12, faults, hits: 12-faults, replacements: faults-row.physical_frames,
+        reads: 12, writes: 0, writebacks: 0, hit_rate: (12-faults)/12, fault_rate: faults/12 };
     });
+    data.operations = Array(12).fill('read');
     return response(data);
   });
   compareView(); fireEvent.click(screen.getByRole('button', { name: 'Belady preset' }));

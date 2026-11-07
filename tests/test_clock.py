@@ -43,6 +43,7 @@ def test_clock_experiment_and_http_comparison_round_trip():
     legacy = json.loads(text)
     legacy['schema_version'] = 1
     del legacy['tlb_capacity']
+    del legacy['operations']
     with pytest.raises(ValidationError):
         load_experiment(json.dumps(legacy))
     with TestClient(create_app()) as client:
