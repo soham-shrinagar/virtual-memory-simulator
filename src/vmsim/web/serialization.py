@@ -11,7 +11,8 @@ def config_payload(config):
 
 def metrics_payload(metrics):
     return {"hits": metrics.hits, "faults": metrics.faults, "replacements": metrics.replacements, "references": metrics.references,
-            "hit_rate": metrics.hit_rate, "fault_rate": metrics.fault_rate}
+            "hit_rate": metrics.hit_rate, "fault_rate": metrics.fault_rate,
+            "reads": metrics.reads, "writes": metrics.writes, "writebacks": metrics.writebacks}
 
 
 def tlb_payload(tlb):
@@ -25,7 +26,7 @@ def snapshot_payload(state):
     policy = state.policy_state
     return {
         "step": state.step,
-        "frames": [{"frame_id": frame.frame_id, "page": frame.page} for frame in state.frames],
+        "frames": [{"frame_id": frame.frame_id, "page": frame.page, "dirty": frame.dirty} for frame in state.frames],
         "resident_pages": [{"page": entry.page, "frame_id": entry.frame_id} for entry in state.resident_pages],
         "metrics": metrics_payload(state.metrics),
         "tlb": tlb_payload(state.tlb),
@@ -45,6 +46,7 @@ def simulation_payload(result):
         "schema_version": SCHEMA_VERSION,
         "config": config_payload(result.config), "input_mode": result.input_mode,
         "policy": result.policy, "workload": [access.input_value for access in result.accesses],
+        "operations": [access.operation for access in result.accesses],
         "initial_state": snapshot_payload(result.initial_state),
         "events": [{
             "step": event.step, "input_value": event.access.input_value,
@@ -53,6 +55,7 @@ def simulation_payload(result):
             "frame_id": event.frame_id, "physical_address": event.physical_address,
             "victim_page": event.victim_page, "reason": event.reason,
             "tlb_result": event.tlb_result,
+            "operation": event.access.operation, "writeback": event.writeback,
             "state": snapshot_payload(event.state),
         } for event in result.events],
         "metrics": metrics_payload(result.metrics),

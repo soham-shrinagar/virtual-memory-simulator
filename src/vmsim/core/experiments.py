@@ -10,7 +10,7 @@ from vmsim.core.translation import normalize_and_validate
 from vmsim.core.validation import ValidationError, require_int
 
 SCHEMA_VERSION = 1
-EXPERIMENT_SCHEMA_VERSION = 2
+EXPERIMENT_SCHEMA_VERSION = 3
 
 
 @dataclass(frozen=True, slots=True)
@@ -20,6 +20,7 @@ class Experiment:
     input_mode: str = "pages"
     policy: str = "fifo"
     tlb_capacity: int = 0
+    operations: tuple[str, ...] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,12 +31,13 @@ class ComparisonRow:
     tlb: TLBState | None = None
 
 
-def make_experiment(config, workload, input_mode="pages", policy="fifo", tlb_capacity=0) -> Experiment:
-    accesses = normalize_and_validate(config, workload, input_mode)
+def make_experiment(config, workload, input_mode="pages", policy="fifo", tlb_capacity=0, *, operations=None) -> Experiment:
+    accesses = normalize_and_validate(config, workload, input_mode, operations=operations)
     if policy not in POLICIES:
         raise ValidationError("Choose fifo, lru, optimal, or clock.", "policy")
     require_int(tlb_capacity, 'tlb_capacity', 0, 32)
-    return Experiment(config, tuple(access.input_value for access in accesses), input_mode, policy, tlb_capacity)
+    return Experiment(config, tuple(access.input_value for access in accesses), input_mode, policy, tlb_capacity,
+                      tuple(access.operation for access in accesses))
 
 
 def experiment_payload(experiment: Experiment) -> dict:
@@ -46,12 +48,14 @@ def experiment_payload(experiment: Experiment) -> dict:
         "input_mode": experiment.input_mode,
         "policy": experiment.policy,
         "tlb_capacity": experiment.tlb_capacity,
+        "operations": list(experiment.operations) if experiment.operations is not None else ["read"] * len(experiment.workload),
     }
 
 
 def dump_experiment(experiment: Experiment) -> str:
     # Revalidate even records constructed directly by a caller.
-    checked = make_experiment(experiment.config, experiment.workload, experiment.input_mode, experiment.policy, experiment.tlb_capacity)
+    checked = make_experiment(experiment.config, experiment.workload, experiment.input_mode, experiment.policy,
+                              experiment.tlb_capacity, operations=experiment.operations)
     return json.dumps(experiment_payload(checked), indent=2, allow_nan=False) + "\n"
 
 
@@ -72,22 +76,29 @@ def load_experiment(text: str) -> Experiment:
     except (json.JSONDecodeError, RecursionError):
         raise ValidationError("Invalid experiment JSON.", "experiment") from None
     keys = {"schema_version", "config", "workload", "input_mode", "policy"}
-    if isinstance(data, dict) and data.get('schema_version') == 2:
+    if isinstance(data, dict) and data.get('schema_version') in (2, 3):
         keys.add('tlb_capacity')
+    if isinstance(data, dict) and data.get('schema_version') == 3:
+        keys.add('operations')
     if not isinstance(data, dict) or set(data) != keys:
         raise ValidationError("Invalid or incomplete experiment fields for this schema version.", "experiment")
-    if type(data["schema_version"]) is not int or data["schema_version"] not in (1, 2):
-        raise ValidationError("Unsupported experiment schema version; expected 1 or 2.", "schema_version")
+    if type(data["schema_version"]) is not int or data["schema_version"] not in (1, 2, 3):
+        raise ValidationError("Unsupported experiment schema version; expected 1, 2, or 3.", "schema_version")
+    if data["schema_version"] == 3 and not isinstance(data["operations"], list):
+        raise ValidationError("Supply one operation for each reference.", "operations")
     config = data["config"]
     if not isinstance(config, dict) or set(config) != {"page_size", "virtual_pages", "physical_frames"}:
         raise ValidationError("Invalid memory configuration fields.", "config")
     if data['schema_version'] == 1 and data['policy'] == 'clock':
         raise ValidationError('CLOCK requires experiment schema version 2.', 'policy')
-    return make_experiment(MemoryConfig(**config), data["workload"], data["input_mode"], data["policy"], data['tlb_capacity'] if data['schema_version'] == 2 else 0)
+    if data['schema_version'] < 3 and isinstance(data['workload'], str) and ':' in data['workload']:
+        raise ValidationError('Read/write references require experiment schema version 3.', 'workload')
+    return make_experiment(MemoryConfig(**config), data["workload"], data["input_mode"], data["policy"],
+                           data.get('tlb_capacity', 0), operations=data.get('operations'))
 
 
-def compare(config, workload, input_mode="pages", policies=POLICIES, frame_counts=None, *, tlb_capacity=0) -> tuple[ComparisonRow, ...]:
-    accesses = normalize_and_validate(config, workload, input_mode)
+def compare(config, workload, input_mode="pages", policies=POLICIES, frame_counts=None, *, tlb_capacity=0, operations=None) -> tuple[ComparisonRow, ...]:
+    accesses = normalize_and_validate(config, workload, input_mode, operations=operations)
     if not isinstance(policies, (tuple, list)) or not 1 <= len(policies) <= len(POLICIES) or any(p not in POLICIES for p in policies):
         raise ValidationError("Select between one and four supported policies.", "policies")
     if len(set(policies)) != len(policies):

@@ -18,15 +18,15 @@ def physical_address(config: MemoryConfig, frame_id: int, offset: int) -> int:
 
 
 def normalize_and_validate(
-    config: MemoryConfig, workload: str | Sequence[int], input_mode: str = "pages"
+    config: MemoryConfig, workload: str | Sequence[int], input_mode: str = "pages", *, operations=None,
 ) -> tuple[Access, ...]:
-    values = parse_workload(workload, input_mode)
+    references = parse_workload(workload, input_mode, operations)
     upper = config.virtual_pages if input_mode == "pages" else config.virtual_capacity
     accesses = []
-    for position, value in enumerate(values, 1):
+    for position, (value, operation) in enumerate(references, 1):
         if value >= upper:
             raise ValidationError(f"Reference must be between 0 and {upper - 1}.", token_index=position)
         address = value * config.page_size if input_mode == "pages" else value
         page, offset = split_address(config, address)
-        accesses.append(Access(value, address, page, offset))
+        accesses.append(Access(value, address, page, offset, operation))
     return tuple(accesses)

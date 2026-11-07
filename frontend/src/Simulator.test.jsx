@@ -156,9 +156,11 @@ describe('interactive simulation', () => {
     const trace = JSON.parse(JSON.stringify(policyTrace('fifo')));
     const first = trace.events[0];
     trace.workload = Array(1000).fill(0);
+    trace.operations = Array(1000).fill('read');
     trace.events = Array.from({ length: 1000 }, (_, index) => {
       const step = index + 1;
-      const metrics = { references: step, hits: index, faults: 1, replacements: 0, hit_rate: index / step, fault_rate: 1 / step };
+      const metrics = { references: step, hits: index, faults: 1, replacements: 0, reads: step, writes: 0,
+        writebacks: 0, hit_rate: index / step, fault_rate: 1 / step };
       return { ...first, step, result: index ? 'hit' : 'fault', state: { ...first.state, step, metrics } };
     });
     trace.metrics = trace.events.at(-1).state.metrics;

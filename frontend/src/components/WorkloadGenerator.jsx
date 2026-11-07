@@ -32,7 +32,7 @@ export default function WorkloadGenerator({ draft, onGenerated }) {
       <p className="field-hint">Uses the configured page range and input mode. Locality favors a hot set of up to four pages (80%), moving every 32 references. Same seed and settings reproduce the same list.</p>
       {request.error && <p className="form-error" role="alert">{request.error}</p>}
       <div className="run-actions"><button className="button" disabled={request.busy}>{request.busy ? 'Generating…' : 'Generate workload'}</button>{request.busy && <button className="button" type="button" onClick={reset}>Cancel generation</button>}</div>
-      <p className="field-hint">Replaces the editor and clears the active trace. JSON saves the generated references.</p>
+      <p className="field-hint">Generates reads and clears the active trace. Add W: prefixes in the editor for writes. JSON saves the references and operations.</p>
     </form>
   </details>;
 }

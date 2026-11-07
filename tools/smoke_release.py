@@ -102,6 +102,11 @@ runpy.run_module('vmsim', run_name='__main__')
             cached = post('/api/simulate', {'workload': [0, 1, 0], 'tlb_capacity': 2, 'policy': 'lru'})
             assert cached['tlb']['hits'] == 1 and cached['tlb']['misses'] == 2
             assert cached['metrics']['faults'] == 2 and cached['events'][2]['tlb_result'] == 'hit'
+            mixed = post('/api/simulate', {'config': {'physical_frames': 1},
+                         'workload': 'W:0 R:0 1 0 W:0 W:0 2', 'tlb_capacity': 2})
+            assert mixed['metrics']['writebacks'] == 2 and mixed['metrics']['writes'] == 3
+            assert mixed['events'][2]['writeback'] is True
+            assert mixed['events'][4]['tlb_result'] == 'hit' and mixed['events'][4]['state']['frames'][0]['dirty']
             recipe = {'seed': 42, 'length': 5, 'profile': 'uniform'}
             generated = post('/api/workloads/generate', recipe)
             assert generated['workload'] == [0, 2, 1, 5, 5]

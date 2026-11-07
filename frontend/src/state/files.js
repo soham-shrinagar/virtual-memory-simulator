@@ -11,16 +11,17 @@ export function downloadFile(name, text, type) {
 }
 
 export function comparisonCsv(result) {
-  const header = 'policy,physical_frames,references,hits,faults,replacements,hit_rate,fault_rate,tlb_capacity,tlb_hits,tlb_misses';
+  const header = 'policy,physical_frames,references,hits,faults,replacements,hit_rate,fault_rate,tlb_capacity,tlb_hits,tlb_misses,reads,writes,writebacks';
   return [header, ...result.rows.map(({ policy, physical_frames, metrics: m, tlb }) =>
-    [policy, physical_frames, m.references, m.hits, m.faults, m.replacements, m.hit_rate, m.fault_rate, result.tlb_capacity, tlb?.hits ?? '', tlb?.misses ?? ''].join(','))].join('\r\n') + '\r\n';
+    [policy, physical_frames, m.references, m.hits, m.faults, m.replacements, m.hit_rate, m.fault_rate, result.tlb_capacity, tlb?.hits ?? '', tlb?.misses ?? '', m.reads, m.writes, m.writebacks].join(','))].join('\r\n') + '\r\n';
 }
 
 export function experimentDraft(experiment) {
   return {
     pageSize: String(experiment.config.page_size), virtualPages: String(experiment.config.virtual_pages),
     physicalFrames: String(experiment.config.physical_frames), inputMode: experiment.input_mode,
-    policy: experiment.policy, workload: experiment.workload.join(', '),
+    policy: experiment.policy, workload: experiment.workload.map((value, index) =>
+      experiment.operations[index] === 'write' ? `W:${value}` : String(value)).join(', '),
     tlbCapacity: String(experiment.tlb_capacity),
   };
 }
